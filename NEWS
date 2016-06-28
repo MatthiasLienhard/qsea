@@ -1,0 +1,28 @@
+Version 0.99.3
+________________________________________________________________________________
+
+Bugfixes:
+- updated imported NAMESPACE 
+
+Version 0.99.2
+________________________________________________________________________________
+New functions:
+- option to set ploidity for chromosomes, i.e. to account for sex chromosomes
+Bugfixes:
+- fixed bug resulting in NA values at quantile calculation for beta estimates
+- minor fixes
+Documentation:
+- changed vignette builder to knitr/BiocStyle/html
+
+
+Version 0.99.1
+________________________________________________________________________________
+Bugfixes:
+- fixed crashing plotCoverage with one sample
+- qseaPCA-show
+- typo in error-message of getOffset (rpw)
+- resolved namespace issues
+
+Version 0.99.0
+________________________________________________________________________________
+- Submission to Bioconductor

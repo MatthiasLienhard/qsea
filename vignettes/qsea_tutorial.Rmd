@@ -1,0 +1,202 @@
+---
+title: "QSEA Tutorial"
+author: "Matthias Lienhard, Lukas Chavez and Ralf Herwig"
+date: "`r doc_date()`"
+package: "`r pkg_ver('qsea')`"
+abstract: >
+  QSEA (quantitative sequencing enrichment analysis) was developed 
+  as the successor of the MEDIPS package for analyzing data derived from 
+  methylated DNA immunoprecipitation (MeDIP) experiments followed by 
+  sequencing (MeDIP-seq). However, qsea provides functionality for 
+  the analysis of other kinds of quantitative sequencing data 
+  (e.g. ChIP-seq, MBD-seq, CMS-seq and others) 
+  including calculation of differential enrichment between groups of samples.
+vignette: >
+  %\VignetteIndexEntry{qsea}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}  
+output: 
+  BiocStyle::html_document
+bibliography: 
+  qseaTutorial.bib
+---
+# Introduction
+
+QSEA stands for "Quantitative Sequencing Enrichment Analysis" and implements 
+a statistical framework for modeling and transformation of MeDIP-seq enrichment
+data to absolute methylation levels similar to BS-sequencing read-outs. 
+Furthermore, QSEA comprises functionality for data normalization that accounts 
+for the effect of CNVs on the read-counts as well as for the detection and 
+annotation of differentially methylated regions (DMRs).
+The transformation is based on a Bayesian model, that explicitly take
+ into account the signal to noise ratios of the experiments.
+This transformation takes the sample-wise enrichment profile into 
+account, which is calibrated with or without additional data. 
+
+# Installation
+
+
+To install the QSEA package in your R environment, start R and enter:
+
+```{r, eval=FALSE}
+source("https://bioconductor.org/biocLite.R")
+biocLite("qsea")
+
+```
+
+Next, it is necessary to have the genome of interest
+available in your R environment. 
+As soon as you have the `r Biocpkg("BSgenome")` package installed and the library loaded using 
+
+```{r, eval=FALSE}
+biocLite("BSgenome")
+library("BSgenome")
+```
+you can list all available genomes by typing
+
+```{r, eval=FALSE}
+available.genomes()
+```
+In case a genome of interest is not available as a BSgenome
+package but the sequence of the genome is available, 
+a custom BSgenome package can be generated, please see the 
+"How to forge a BSgenome data package" manual of the `r Biocpkg("BSgenome")` package.
+
+In the given example, we mapped the short 
+reads against the human genome build hg19. 
+Therefore, we download and install this genome build:
+```{r, eval=FALSE}
+biocLite("BSgenome.Hsapiens.UCSC.hg19")
+```
+This takes some time, but has to be done only once for each reference genome.
+
+In order to specify genomic regions of interest, 
+QSEA utilitzes the GenomicRanges package
+
+```{r, eval=FALSE}
+biocLite("GenomicRanges")
+```
+Finally, the QSEA work flow described below requires access to example data 
+available in the `r Biocpkg("MEDIPSData")` package which can be installed by typing:
+```{r, eval=FALSE}
+biocLite("MEDIPSData")
+```
+# Example
+First, the qsea package has to be loaded. 
+
+```{r, message=FALSE}
+library(qsea)
+```
+
+In the given example, we mapped the short reads 
+against the human genome build hg19. 
+Therefore, we load the pre-installed (see chapter 3) hg19 library:
+
+```{r, message=FALSE}
+library(BSgenome.Hsapiens.UCSC.hg19)
+```
+Next, we need to crate a sample table, containing the names of the 
+samples, the file path to the alignment files, and a group annotation.
+
+```{r, results='asis'}
+bam_hESCs_1 = system.file("extdata", 
+    "hESCs.MeDIP.Rep1.chr22.bam", package="MEDIPSData")
+bam_hESCs_2 = system.file("extdata", 
+    "hESCs.MeDIP.Rep2.chr22.bam", package="MEDIPSData")
+sample_table=data.frame(sample_name=paste0("hESCs_", 1:2), 
+file_name=c(bam_hESCs_1,bam_hESCs_2), 
+group=rep("hESC",2), stringsAsFactors=FALSE)
+knitr::kable(sample_table)
+```
+
+All relevant information of the enrichment experiment, including 
+sample information, the genomic read coverage, CpG density and other 
+parameters are stored in a "qseaSet" object. 
+To create such an object, call the function "createQseaSet", 
+that takes the following parameters:
+
+* BSgenome: The reference genome name as defined by BSgenome. (required)
+* window_size: defines the genomic resolution by which 
+  short read coverage is calculated. (default:250 bases) 
+* chr.select: Only data at the specified 
+  chromosomes will be processed. (default: NULL=all chromosomes)
+* Regions: If specified, only data in the specified 
+  regions will be processed.
+
+```{r, collapse=TRUE}
+qseaSet=createQseaSet(sampleTable=sample_table, 
+        BSgenome="BSgenome.Hsapiens.UCSC.hg19", 
+        chr.select="chr22", 
+        window_size=500)
+qseaSet
+```
+
+We could now estimate CNVs (addCNV) from sequencing data of the input library. 
+However, for this example, there is no such data. 
+
+We now read the alignment files and compute the MeDIP coverage for each window.
+
+```{r, collapse=TRUE}
+qseaSet=addCoverage(qseaSet, fragment_length=200, uniq=TRUE, paired=FALSE)
+```
+
+QSEA accounts for differences in sequencing depth and library 
+composition by estimating the effective library size 
+for each sample using the trimmed mean of m-values approach 
+[TMM, @robinson2010].
+
+```{r, collapse=TRUE}
+qseaSet=addLibraryFactors(qseaSet)
+```
+
+As MeDIP seq read coverage is dependent on the CpG density of the fragment,
+we estimate the average CpG density per fragment for each genomic window.
+
+```{r, collapse=TRUE}
+qseaSet=addPatternDensity(qseaSet, "CG", name="CpG")
+```
+
+From the regions without CpGs we can estimate the coverage 
+offset from background reads.
+```{r, collapse=TRUE}
+qseaSet=addOffset(qseaSet, enrichmentPattern="CpG")
+```
+
+In order to estimate the relative enrichment, we need to model the 
+enrichment efficiency, which is dependent on the CpG density. 
+The parameters for this model can be estimated using the 
+addEnrichmentParameters() function. 
+For this task we need to provide known values for a subset of windows, 
+for example gained by validation experiments or from other studies.
+Since such information is not available for the analyzed data set, 
+we assume high methylation at regions with low CpG density, 
+and linearly decreasing average methylation levels for higher CpG density. 
+
+```{r, collapse=TRUE}
+wd=which(getRegions(qseaSet)$CpG_density>1 &
+    getRegions(qseaSet)$CpG_density<15)
+signal=(15-getRegions(qseaSet)$CpG_density[wd])*.55/15+.25
+signal=matrix(signal,nrow=length(signal),ncol=length(getSampleNames(qseaSet)))
+qseaSet=addEnrichmentParameters(qseaSet, pattern_name="CpG", 
+    windowIdx=wd, signal=signal)
+```
+
+
+We can now create an output table with raw counts 
+(_reads) estimated % methylation values (_beta), 
+as well as an 95% credibility interval [_betaLB, _betaUB] 
+for the estimates for all windows within a region of interest, 
+in this case a particular CpG Island:
+
+```{r, collapse=TRUE}
+library(GenomicRanges)
+cgi=GRanges("chr22", IRanges(17081987, 17083343))
+result=makeTable(qseaSet, 
+    samples=getSampleNames(qseaSet), 
+    ROIs=cgi, 
+    norm_method=c("reads", "beta", "betaLB", "betaUB"))
+knitr::kable(result)
+```
+
+# References
+

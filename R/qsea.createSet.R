@@ -1,0 +1,338 @@
+createQseaSet=function(sampleTable,BSgenome,chr.select,Regions,window_size=250)
+{            
+    ## Parameter Check
+    facI=sapply(sampleTable, is.factor)
+    sampleTable[,facI] = lapply(sampleTable[,facI], as.character)
+    rownames(sampleTable)=sampleTable$sample_name
+    checkSamples(sampleTable)
+    #must have: regions or bsgenome
+    if( missing(BSgenome) && (missing(Regions) || class(Regions)!="GRanges" ) )
+        stop("Must specify a BSgenome library or a GRanges \"Regions\" object.")
+    message("==== Creating qsea set ====")
+    # sort chromosomes
+    parameters=list(window_size=window_size)    
+    if(! missing(chr.select)){
+        message("restricting analysis on ", paste(chr.select, collapse=", "))
+    } 
+    if (!missing(BSgenome)) {
+        parameters[["BSgenome"]] = BSgenome
+    }
+
+    ## get Genomic Regions
+    if (missing(Regions)){
+        message("Dividing selected chromosomes of ",BSgenome , " in ", 
+            window_size, "nt windows")
+        Regions=makeGenomeWindows(BSgenome, chr.select, window_size)
+    }else{
+        message("Dividing provided regions in ", window_size, "nt windows")
+        Regions=subdivideRegions(Regions, chr.select,window_size, BSgenome)
+    }
+    chrN=mixedsort(levels(seqnames(Regions)))
+    
+    plM=matrix(2,nrow(sampleTable), length(chrN), 
+        dimnames=list(sampleTable$sample_name,chrN ))
+    sexIdx=match(c("sex", "gender"), names(sampleTable))
+    sexIdx=head(sexIdx[!is.na(sexIdx)],1)
+    if(length(sexIdx)==0){
+        sex=rep("unknown", nrow(sampleTable))
+        if(any(c("X", "Y","chrX", "chrY") %in% chrN))
+            warning("no column \"sex\" or \"gender\"found in sampleTable, ",
+                "assuming diploidity for all selected chromosomes")
+    }else{
+        sex=sampleTable[,sexIdx]
+        mIdx=sex %in% c("M","m", "male")
+        fIdx=sex %in% c("F","f", "female")
+        yIdx=colnames(plM) %in% c("Y", "chrY")
+        xIdx=colnames(plM) %in% c("X", "chrX")
+        if (any(!(mIdx|fIdx)))
+            warning("unknown sex specified sampleTable for sample(s) ",
+                paste(rownames(plM)[!(mIdx|fIdx)],collapse=", "),
+                "; assuming diploidity for all selected chromosomes")
+        plM[mIdx,yIdx|xIdx]=1
+        plM[fIdx,yIdx]=0
+    }
+    cnv=GRanges(seqnames=seqlevels(Regions),
+        IRanges(start=1, end=seqlengths(Regions)))
+    cnv_val=t(log2(plM/2))
+    cnv_val[!is.finite(cnv_val)]=NA
+    mcols(cnv)=cnv_val
+    qs=new('qseaSet', sampleTable=sampleTable,
+                regions=Regions,
+                ploidity=plM,
+                count_matrix=matrix(), 
+                cnv=cnv, #logFC
+                parameters=parameters, 
+                libraries=list(), 
+                enrichment=list()
+    )
+
+}
+
+#for each window, calculate the sequence preference from low coverage input seq
+addSeqPref<-function(qs, seqPref,file_name, fragment_length, paired=FALSE, 
+        uniquePos=TRUE, alpha=0.05, pseudocount=5, cut=3){
+    if(! missing(seqPref) ){
+        if(class(seqPref)!="numeric")
+            stop("Please provide sequence preference as log2FC")
+        if(length(seqPref) != length(getRegions(qs)))
+            stop("length of provided sequence preference",
+                " does not match number of windows")
+    }else{
+        if(missing(file_name))
+            stop("please specify column with file names for ",
+                "sequence preference estimation")
+        if(paired)
+            fragment_length=NULL
+        if(missing(fragment_length))
+            fragment_length=getFragmentLength(qs)[1]
+        seqPref=findSeqPref(qs=qs, file_name="input", 
+            fragment_length=fragment_length, paired=paired, uniquePos=uniquePos,
+            alpha=alpha, pseudocount=pseudocount, cut=cut)    
+        qs=setLibrary(qs, "SeqPref",seqPref$libraries)
+        seqPref=seqPref$seqPref
+    }
+    qs=addRegionsFeature(qs, "seqPref",seqPref)
+    if(! all(is.na(getOffset(qs) ) ))
+        warning("Consider recalculating offset based ",
+                "on new sequence preference")
+    return(qs)
+
+}
+getFragmentLength<-function(qs){
+            lib=getLibrary(qs,"file_name")
+            if(is.null( lib))
+                stop("no fragment length found... either specify parameter ",
+                    "\"fragment_length\" or run \"addCoverage()\" first.")
+            r=rank(lib[,"fragment_length"] + lib[,"fragment_sd"])
+            idx=which.min(abs(r-length(r)/2)) #~which.median
+            fragment_length=lib[idx,"fragment_length"]
+            fragment_sd=lib[idx,"fragment_sd"]
+            message("selecting fragment length (", round(fragment_length,2), 
+                ") and sd (", round(fragment_sd,2),") from sample ", 
+                getSampleNames(qs,idx), " as typical values")
+            return(c(fragment_length,fragment_sd))
+}
+
+addPatternDensity<-function(qs, pattern,name, fragment_length, fragment_sd,
+        patternDensity, fixed=TRUE){
+    if(missing(patternDensity) ){
+        BSgenome=getGenome(qs)
+        if(is.null(BSgenome))
+            stop("Pattern density calculation requires BSgenome")
+        if(missing(pattern) )    
+            stop("please provide sequence pattern for density estimation")
+        if(missing(name))
+            name=pattern
+        if(missing(fragment_length)){
+            fl=getFragmentLength(qs)
+            fragment_length=fl[1]
+            fragment_sd=fl[2]
+        }else{
+            if(missing(fragment_sd))
+                fragment_sd=0
+        }                
+        patternDensity=estimatePatternDensity(Regions=getRegions(qs), 
+            pattern=pattern,BSgenome=BSgenome, fragment_length=fragment_length, 
+            fragment_sd=fragment_sd, fixed=fixed) 
+    }
+    #if(! all(is.na(getOffset(qs) ) ))
+    #    warning("Consider recalculating offset based on new pattern density")
+    if(missing(name)){
+        stop("please provide a name for the pattern")
+    }
+    #add density of pattern
+    addRegionsFeature(qs,paste0(name,"_density"), patternDensity )
+}
+
+addCoverage<-function(qs, fragment_length, uniquePos=TRUE, minMapQual=1, 
+        paired=FALSE){
+    sampleTable=getSampleTable(qs)
+    Regions=getRegions(qs)
+    if(paired)
+        fragment_length=NULL
+    if(missing(fragment_length))
+        stop("for unpaired reads, please specify fragment length")
+    fname_idx=which(names(sampleTable)=="file_name" )[1]
+    # get the coverage
+    coverage= matrix(NA,length(Regions), nrow(sampleTable), 
+        dimnames=list(NULL, sampleTable$sample_name))
+    libraries=matrix(NA, nrow(sampleTable), 6, 
+        dimnames=list(sampleTable$sample_name, 
+            c("total_fragments", "valid_fragments","library_factor", 
+                "fragment_length", "fragment_sd", "offset")))
+    for(sNr in seq_len(nrow(sampleTable))){
+        cov=getCoverage(Regions, sampleTable[sNr,fname_idx], fragment_length, 
+            minMapQual, uniquePos, paired)
+        coverage[,sNr]=cov$counts
+        libraries[sNr,c(1,2,4,5)]=cov$fragment        
+    }
+    qs=setCounts(qs,count_matrix=coverage)
+    setLibrary(qs, "file_name", libraries)
+}
+addLibraryFactors<-function(qs, factors,...){
+    if(missing(factors)){
+        message("deriving TMM library factors for ", 
+            length(getSampleNames(qs))," samples" )
+        factors=estimateLibraryFactors(qs, ...)        
+    }else if (!is.numeric(factors) || (length(factors)!=1 && 
+            length(factors)!=length(getSampleNames(qs)) ) ){
+        stop("Number of factors does not mathch number of samples.")
+    }
+    lib=getLibrary(qs, "file_name")
+    lib[, "library_factor"]=factors
+    setLibrary(qs, "file_name", lib)
+}
+estimateLibraryFactors<-function(qs,trimA=c(.5,.99), trimM=c(.1,.9),
+        doWeighting=TRUE, ref=1, plot=FALSE, nReg=500000){
+    if( length(trimM) != 2 || trimM[1]>=trimM[2] || trimM[1]<0 || trimM[2] > 1)
+        stop("invalid trimM parameter for TMM: ", paste(trimM))
+    if( length(trimA) != 2 || trimA[1]>=trimA[2] || trimA[1]<0 || trimA[2] > 1)
+        stop("invalid trimA parameter for TMM: ", paste(trimA))
+    n=length(getSampleNames(qs))
+    if(n==1) return (1)
+
+    tmm=numeric(n)
+    if (missing(ref)) ref=1
+    if(is.character(ref))
+        ref=which(getSampleNames(qs)==ref)
+    if(is.na(ref) | !is.numeric(ref) |ref<1 | ref > n )
+        stop("invalid reference sample for TMM (",ref,")")
+    others=seq_len(n)[-ref]
+    tReg=length(getRegions(qs))
+    libsz=getLibSize(qs, normalized=FALSE)
+    values=getNormalizedValues(qs,methods=list(scaled=c("cnv", "preference")),
+        windows=seq(from=1,to=tReg,by=max(1,round(tReg/nReg))), 
+        samples=getSampleNames(qs) )
+    values[values<1]=NA
+
+    if(plot){
+        row=ceiling(sqrt(n-1))
+        col=ceiling((n-1)/row)
+        par(mfrow=c(row, col))
+        cr=colorRampPalette(
+            c("white","skyblue", "blue", "yellow", "orange","red", "darkred"))
+    }
+    for(i in others){
+        a=log(values[,i])+log(values[,ref])-log(libsz[ref])-log(libsz[i])
+        m=log(values[,i])-log(values[,ref])+log(libsz[ref])-log(libsz[i])
+        thA=quantile(a, trimA, na.rm=TRUE)
+        thM=quantile(m, trimM, na.rm=TRUE)
+        sel=which(a>thA[1] & a < thA[2] & m>thM[1] &m<thM[2])
+        if(doWeighting){
+            w=1/(1/values[sel,ref]+1/values[sel,i]-1/libsz[ref]-1/libsz[i])
+            tmm[i]=sum(m[sel]*w)/sum(w)
+        }else{
+            tmm[i]=mean(m[sel])
+        }
+        if(plot){
+            smoothScatter(a,m, pch=20, colramp=cr, ylab="M", xlab="A", 
+                main=paste(getSampleNames(qs, c(i,ref)), collapse=" vs "))
+            abline(h=tmm[i], col="red", lwd=2)
+            rect(thA[1], thM[1], thA[2], thM[2])
+            
+        }
+    }
+    return(exp(tmm-mean(tmm)))
+}
+
+
+addEnrichmentParameters<-function(qs, pattern_name="CpG", signal,
+        windowIdx, min_wd=5,bins=seq(.5,40.5,1)){
+    if(missing (windowIdx))
+        stop("please specify the windows for enrichment analysis")
+    if(missing (signal))
+        stop("please provide a signal matrix for the specified windows")
+    enrichment=estimateEnrichmentLM(qs,windowIdx=windowIdx, signal=signal, 
+        min_wd=min_wd,bins=bins, pattern_name=pattern_name)
+    parameters=fitEnrichmentProfile(enrichment$factors, enrichment$density, 
+        enrichment$n, minN=1)
+    setEnrichment(qs, c(list(parameters=parameters),enrichment))
+}
+
+subdivideRegions<-function(Regions, chr.select,window_size, BSgenome){
+    Regions=Regions[as.vector(seqnames(Regions)) %in% chr.select]
+    #resize (enlarge) to a multiple of window_size
+    #merge overlapping windows
+        
+    #resize again?
+    Regions=reduce(Regions)
+    ranges=ranges(Regions)
+
+    pos=apply(FUN=function(x) seq(from=x[1], to=x[2], by=window_size), 
+        X=as.data.frame(ranges),MARGIN=1)
+    if(class(pos)=="matrix"){
+        n=nrow(pos)
+        pos=as.vector(pos)
+        chr=rep(as.character(seqnames(Regions)), each=n)
+    }else {
+        n=sapply(X=pos,FUN=length)
+        pos=unlist(pos)
+        chr=rep(as.character(seqnames(Regions)), times=n)
+    }
+    if(!missing(BSgenome)){
+        chr_length=seqlengths(get(ls(paste("package:", BSgenome, sep=""))))
+        seqinfo = Seqinfo(names(chr_length),chr_length, NA, BSgenome)
+    }else{
+        seqinfo=seqinfo(Regions)
+    }
+    if(!missing(chr.select)){
+        seqinfo=seqinfo[chr.select]
+    }
+
+    return(GRanges(seqnames=chr, IRanges(start=pos, width=window_size), 
+        seqinfo=seqinfo))
+}
+
+addOffset<-function(qs,enrichmentPattern , maxPatternDensity=0.01,offset){
+    if(missing(offset)){
+        if(missing(enrichmentPattern))
+            stop("please specify sequence pattern for enrichment analysis")
+        offset=estimateOffset(qs,enrichmentPattern, maxPatternDensity)
+    }
+    lib=getLibrary(qs, "file_name")    
+    lib[,"offset"]=offset
+    setLibrary(qs, "file_name", lib)
+}
+
+
+
+
+checkSamples<-function(sampleTable){
+    if(missing(sampleTable) || !is.data.frame(sampleTable))
+        stop("Must specify a sample table (data.frame)")
+    m=match(c("sample_name", "file_name", "group"),names(sampleTable))
+    if(any(is.na(m)))
+        stop("sample table must contain \"sample_name\", ",
+            "\"file_name\" and \"group\" columns")    
+    sname_idx=m[1]
+    fname_idx=m[2]
+    group_idx=m[3]
+    if(length(unique(sampleTable[,sname_idx]))!=nrow(sampleTable))
+        stop("Sample names must be unique")
+    
+    wigFiles=FALSE
+    bamFiles=FALSE
+    errorMsg=""
+    for(sNr in seq_len(nrow(sampleTable))){
+        if(file.exists(as.character(sampleTable[sNr,fname_idx]))){
+            tmp=strsplit(sampleTable[sNr,fname_idx], ".", fixed=TRUE)[[1]]
+            if (tmp[length(tmp)] %in% c("gz","zip","bz2")){
+                tmp=tmp[-length(tmp)]
+            }
+            ext=tmp[length(tmp)]
+            if(ext %in% c("wig","bw","bigwig")){
+                wigFiles=TRUE
+            }else if(ext %in% c("bam","BAM","sam", "SAM")){
+                bamFiles=TRUE
+            }else{
+                errorMsg=paste(errorMsg,"\nFiletype unknown:", 
+                sampleTable[sNr,fname_idx])
+            }
+        }else{errorMsg=paste(errorMsg,"\nFile not found:", 
+            sampleTable[sNr,fname_idx])}
+    }
+    if (errorMsg !=""){
+        stop("Input file check failed:", errorMsg)
+    }
+}
+

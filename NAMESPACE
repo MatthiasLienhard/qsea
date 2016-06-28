@@ -1,0 +1,87 @@
+#exportPattern("^[[:alpha:]]+")
+export(
+addCNV, 
+addCoverage, 
+addSeqPref, 
+addPatternDensity, 
+addOffset,
+addLibraryFactors,
+addEnrichmentParameters, 
+makeTable, 
+isSignificant,
+getPCA,
+plotCNV,
+plotCoverage, 
+plotEnrichmentProfile,
+plotEPmatrix,
+regionStats, 
+createQseaSet,
+normMethod, 
+addContrast, 
+fitNBglm,
+getExampleQseaSet
+)
+
+exportMethods(
+getSampleTable,
+getSampleNames,
+getSampleGroups,
+getChrNames,
+getParameters,
+getRegions,
+getWindowSize,
+getLibSize,
+getOffset,
+getCNV,
+hasCNV,
+getCounts,
+getPloidity, 
+setPloidity,
+plotPCA,
+plotPCAfactors
+)
+
+exportClasses(
+    "qseaSet", 
+    "qseaGLM", 
+    "qseaPCA" 
+)
+
+importClassesFrom(methods, character, numeric)
+importMethodsFrom(methods, show)
+importMethodsFrom(BiocGenerics, plotPCA)
+importMethodsFrom(Biostrings, matchPattern, reverseComplement, vcountPattern)
+importMethodsFrom(BSgenome, getSeq)
+importMethodsFrom(IRanges, cor, start,end, quantile, ranges, "ranges<-", 
+    resize, restrict, values, var, width,unique,as.vector, which, overlapsAny, 
+    as.matrix, as.data.frame, '[', Views, viewSums, nir_list, collapse)
+importMethodsFrom(methods, show)
+importMethodsFrom(GenomicRanges, as.data.frame, length, '[',
+    reduce, coverage, findOverlaps, countOverlaps, disjointBins)
+importFrom(zoo, rollapply)
+importFrom(HMMcopy, HMMsegment)
+importFrom(rtracklayer,import )
+importFrom(limma, contrastAsCoef)
+importFrom(GenomicRanges, GRanges, seqnames, 
+    as.data.frame, mcols, "mcols<-", 
+    reduce, coverage, findOverlaps, countOverlaps, disjointBins)
+importFrom(Biostrings, DNAString, DNAStringSet, maskMotif, masks)
+importFrom(BSgenome, bsapply,getBSgenome)
+importFrom(graphics, abline, legend, lines, plot)
+importFrom(gtools, mixedsort)
+importFrom("utils", "head")
+importFrom("methods", "new")
+importFrom(IRanges, cor, end, quantile, ranges, "ranges<-", resize, 
+    restrict, start, values, var, width,unique, which, IRanges,space,
+    as.matrix, as.data.frame, Views, viewSums, nir_list, collapse)
+importFrom(stats, lm, t.test, wilcox.test, qnbinom)
+importFrom(utils, read.table, setTxtProgressBar, txtProgressBar,write.table)
+importFrom(Rsamtools, scanBam,ScanBamParam,scanBamFlag)
+importFrom(GenomeInfoDb, seqinfo, seqnames, seqlevels, seqlengths, Seqinfo )
+importFrom(grDevices, colorRamp, colorRampPalette, dev.off, png, rgb)
+importFrom(graphics,abline, legend, lines, plot, arrows, axis, box, frame, 
+    image, layout, par, points, rect, smoothScatter, symbols, text)
+importFrom(stats, as.dendrogram, as.dist, dist, hclust, median, na.omit, optim, 
+    p.adjust, pchisq, pgamma, pnorm, qpois, rnbinom, sd)
+useDynLib(qsea, Cdqrls)
+
