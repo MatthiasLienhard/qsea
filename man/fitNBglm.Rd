@@ -6,7 +6,7 @@
 window, according to the design matrix.}
 \usage{
 fitNBglm(qs,design,link="log",keep, disp_method="region_wise",
-norm_method="rpkm",init_disp=0.5 ,verbose=TRUE, minRowSum=10, pseudocount=1 )
+norm_method="rpkm",init_disp=0.5 ,verbose=TRUE, minRowSum=10, pseudocount=0 )
 }
 \arguments{
 \item{qs}{a qseaSet object}
@@ -27,7 +27,7 @@ parameter for all regions, or a vector with window wise parameters.}
 \item{verbose}{more messages that document the process}
 \item{minRowSum}{filter out windows with less than minRowSum reads over all 
 samples}
-\item{pseudocount}{this value is added to the read counts, to avoid log(0)}
+\item{pseudocount}{this value is added to the read counts}
 }
 \value{This function returns a qseaGLM object, containing the fitted 
 coefficients of the GLMs.}

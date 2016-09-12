@@ -4,7 +4,8 @@
 
 
 getNormalizedValues<-function(qs, methods, windows=NULL, samples=NULL,
-        groupMeans=NULL, verbose=FALSE, minEnrichment=0){
+        groupMeans=NULL, verbose=FALSE, minEnrichment=0, chunksize=1e5){
+    
     if(is.null(windows))
         windows=seq_along(getRegions(qs))
     if(is.null(samples) && is.null(groupMeans)){
@@ -22,29 +23,38 @@ getNormalizedValues<-function(qs, methods, windows=NULL, samples=NULL,
     }else{
         allSampleIdx=samples
     }
+    nchunk=ceiling(length(windows)/chunksize)
+    if(nchunk>1){
+        windows=split(windows, 
+            cut(seq_along(windows), nchunk, labels = FALSE)) 
+        if(verbose)
+            message("normalising values in ",nchunk," cunks")
+    }
+    getChunk<-function(wd){
     if(verbose)
         message("obtaining raw values for ", length(allSampleIdx), 
-            " samples in ",length(windows)," windows")
+            " samples in ",length(wd)," windows")
     
-    raw_values=getCounts(qs, windows=windows, samples=allSampleIdx)
+    raw_values=getCounts(qs, windows=wd, samples=allSampleIdx)
 
-    val_table=matrix(NA, length(windows),length(samples)*length(methods),
-        dimnames=list(NULL, 
-            paste(samples,rep(names(methods), each=length(samples))
-            ,sep="_"))
-        )
-    if(!is.null(groupMeans)){
-        mean_table=matrix(NA, length(windows),
-            length(groupMeans)*length(methods),
-            dimnames=list(NULL, 
-                paste(names(groupMeans),
-                rep(names(methods), each=length(groupMeans)),
-                "means",sep="_"))
-            )
-    }else{mean_table=NULL}
+    #val_table=matrix(NA, length(wd),length(samples)*length(methods),
+    #    dimnames=list(NULL, 
+    #        paste(samples,rep(names(methods), each=length(samples))
+    #        ,sep="_"))
+    #    )
+    #if(!is.null(groupMeans)){
+    #    mean_table=matrix(NA, length(wd),
+    #        length(groupMeans)*length(methods),
+    #        dimnames=list(NULL, 
+    #            paste(names(groupMeans),
+    #            rep(names(methods), each=length(groupMeans)),
+    #            "means",sep="_"))
+    #        )
+    #}else{mean_table=NULL}
     #"enrichment", "cnv", "library_size","region_length", "preference"
     #nomalization factor matrix in logscale
-    for(m in names(methods)){
+    getVal<-function(m){
+    #for(m in names(methods)){
         if(verbose)
             message("deriving ",m," values...")
         pseudocount=getNumPar("psC",methods[[m]])    
@@ -53,10 +63,11 @@ getNormalizedValues<-function(qs, methods, windows=NULL, samples=NULL,
         maxVal=getNumPar("maxCut",methods[[m]])    
         qPer=getNumPar("q",methods[[m]])
         values=raw_values+pseudocount
-        nm=getNormMatrix(qs, methods[[m]],windows,allSampleIdx, pseudocount, 
-            cfCut=minEnrichment)
+        names(values)=paste(samples,m,sep="_")
+        nm=getNormMatrix(qs, methods[[m]],wd,allSampleIdx)
         norm=nm$factors
         offset=nm$offset
+        rm(nm)
         #offset=matrix(0, nrow(values),ncol(values))        
         #if("offset" %in% methods[[m]]){
         #    offset=t(t(norm)*getOffset(qs, allSampleIdx))
@@ -70,22 +81,49 @@ getNormalizedValues<-function(qs, methods, windows=NULL, samples=NULL,
                     names(mcols(getRegions(qs))) || 
                 ! hasEnrichment(qs))
                     stop("missing parameters for beta values")
-                #should not happen at this point
-            for(i in seq_along(allSampleIdx)){
-                big=values[,i]>5*norm[,i]+offset[,i] 
+                #should not happen at this poin
+            cf=mcols(getRegions(qs))[wd,paste0(pattern_name, "_density")]
+            sPar=getEnrichmentParameters(qs)
+            
+            offset=t(offset*t(norm))
+            #for(i in seq_along(samples)){
+            #    normFM[,i]=normFM[,i]*
+            #        .sigmF2(cf,sPar[samples[i],"a"],
+            #            sPar[samples[i],"b"],sPar[samples[i],"c"])+pseudocount
+            #}
+            norm=norm*mapply(.sigmF2, MoreArgs=list(x=cf),
+                a=sPar[samples,"a"],
+                b=sPar[samples,"b"],
+                c=sPar[samples,"c"], USE.NAMES = FALSE)+pseudocount
+
+            if(minEnrichment>0)
+                norm[norm<minEnrichment]=NA 
+            else
+                norm[norm<=0]=NA 
+
+            #for(i in seq_along(allSampleIdx)){
+            big=values>5*norm+offset 
                 #prevents NaN for big y (dgamma gets 0)
-                if(is.null(qPer)){
-                    values[,i]=.estimateMethPois(y=values[,i],
-                        c=norm[,i],o=offset[,i])                
-                }else{
-                    values[,i]=.estimateQuantilePois(y=values[,i],
-                        c=norm[,i],o=offset[,i], p=qPer/100)                
-                }
-                values[big,i]=1
+            if(is.null(qPer)){
+                values=.estimateMethPois( y=values, c=norm,o=offset)
+            }else{
+                dimV=dim(values)
+                dimN=dimnames(values)
+                values=.estimateQuantilePois(y=as.numeric(values),
+                        c=as.numeric(norm),o=as.numeric(offset), p=qPer/100)
+                dim(values)=dimV
+                dimnames(values)=dimN
             }
-        }else{#scale by normalization factor            
-            values=t(t(values-offset))/norm
+            values[big]=1
+            rm(big)            
+        }else{#scale by normalization factor
+            if(any(offset!=0))            
+                values=t(t(values/norm)-offset)
+            else
+                values=values/norm
         }
+        rm(offset)
+        rm(norm)
         if("logit" %in% methods[[m]]){
             values=log2(values/(1-values))
         }else if ("log" %in% methods[[m]]){
@@ -97,21 +135,47 @@ getNormalizedValues<-function(qs, methods, windows=NULL, samples=NULL,
         if(!is.null(minVal)){
             values[values<minVal]=minVal
         }
-
-        if(!is.null(samples)){
-            val_table[,paste(samples,m,sep="_")]=
-                values[,match(samples,allSampleIdx)]
-        }
-        if(!is.null(groupMeans)){
-            for(i in seq_along(groupMeans))
-                mean_table[,paste(names(groupMeans)[i],m,"means",sep="_")]=
-                    rowMeans(values[,
-                        which(allSampleIdx %in% groupMeans[[i]]),drop=FALSE], 
+        #if(!is.null(samples)){
+        #    val_table[,paste(samples,m,sep="_")]=
+        #        values[,match(samples,allSampleIdx)]
+        #}
+        #if(!is.null(groupMeans)){
+        #    for(i in seq_along(groupMeans))
+        #        mean_table[,paste(names(groupMeans)[i],m,"means",sep="_")]=
+        #            rowMeans(values[,
+        #                which(allSampleIdx %in% groupMeans[[i]]),drop=FALSE], 
+        #            na.rm=TRUE)
+        #}
+        mean_table=NULL
+        if(!is.null(groupMeans))
+            mean_table=vapply(groupMeans,function(grp){
+                rowMeans(values[,which(allSampleIdx %in% grp),drop=FALSE], 
                     na.rm=TRUE)
+                }, numeric(length(wd)))
             
-        }
-    }
-    return(cbind(val_table, mean_table))
+        return(list(values[,samples], mean_table))
+                
+    }#end getVal
+
+    idx=seq(from=1,by=2,length.out=length(methods))
+    return(do.call(what=cbind, 
+        args=unlist(lapply(names(methods),getVal)
+            ,FALSE, FALSE)[c(idx, idx+1)]))
+    }#end getChunk
+    if(nchunk==1)
+        ret=getChunk(windows)
+    else 
+        ret=rbind(do.call(what=rbind,args=lapply(windows, getChunk)))
+
+    retnames=character(0)
+    if(!is.null(samples))
+        retnames=paste(samples,
+            rep(names(methods), each=length(samples)),sep="_")
+    if(!is.null(groupMeans))    
+        retnames=c(retnames,paste(names(groupMeans),
+            rep(names(methods), each=length(groupMeans)),"means",sep="_"))
+    colnames(ret)=retnames
+    return(ret)
 }
 
 
@@ -124,7 +188,7 @@ getNumPar<-function(string, methods){
 }
 
 
-getNormMatrix<-function(qs, methods,windows,samples, pseudocount=0,cfCut=3){
+getNormMatrix<-function(qs, methods,windows,samples){
 
     if(class(methods) == "normMethod") {
         methods=methods[[1]]
@@ -147,30 +211,24 @@ getNormMatrix<-function(qs, methods,windows,samples, pseudocount=0,cfCut=3){
         om=om[!duplicated(om[,1]),, drop=FALSE]
         cnv_os=as.matrix(mcols(getCNV(qs)))[om[,2],samples, drop=FALSE]
         normFM[om[,1],]=normFM[om[,1],]*(2 ^ cnv_os)
+        
+        #rm(om, cnv_os)
     }
-    if("offset" %in% methods){
-        offset=t(getOffset(qs, samples)*t(normFM))
+    if("zygosity" %in% methods ){
+        m=match(as.vector(seqnames(getRegions(qs)[windows])), 
+            colnames(getZygosity(qs)))
+        zygos_os=t(getZygosity(qs))[m,samples, drop=FALSE]/2
+        normFM=normFM*zygos_os
+        #rm(m, zygos_os)
+    }
+    normFM[normFM<=0]=NA
+
+   if("offset" %in% methods){#this is quite inefficient
+        #offset=t(getOffset(qs, samples)*t(normFM))
+        offset=getOffset(qs, samples)
     }else{
-        offset=matrix(0, nrow=length(windows),ncol=length(samples))
-    }
-    if("enrichment" %in% methods){
-            pattern_name=getEnrichmentPattern(qs)
-            if( is.null(pattern_name) || 
-                !paste0(pattern_name, "_density") %in% regInfo || 
-                ! hasEnrichment(qs))
-                    stop("missing parameters for beta values")
-                    #should not happen at this point
-            cf=mcols(getRegions(qs))[windows,paste0(pattern_name, "_density")]
-            sPar=getEnrichmentParameters(qs)
-            for(i in seq_along(samples)){
-                normFM[,i]=normFM[,i]*
-                    .sigmF2(cf,sPar[samples[i],"a"],
-                        sPar[samples[i],"b"],sPar[samples[i],"c"])+pseudocount
-            }
-            if(cfCut>0)
-                normFM[normFM<cfCut]=NA 
-            else
-                normFM[normFM<=0]=NA 
+        #offset=sparseMatrix(x=0,i=1,j=1, w=length(windows),ncol=length(samples))
+        offset=rep(0,length(samples))
     }
     return(list(factors=normFM, offset=offset))
 }
@@ -181,13 +239,18 @@ getNormMatrix<-function(qs, methods,windows,samples, pseudocount=0,cfCut=3){
 
 .sigmF=function(x) x/sqrt(1+x^2)
 
-.sigmF2=function(x,a=0,b=1, c=1)
-    (.sigmF(x/c-a)-.sigmF(-a))*b/(1-.sigmF(-a))
+.sigmF2=function(x,a=0,b=1, c=1,o=0)
+    (.sigmF(x/c-a)-.sigmF(-a))*b/(1-.sigmF(-a))+o
 #a= -> <- shift, b=f(INF) y scale, c= <--> x scale
-.estimateMethPois=function(y,c,o) 
-    ( (y+1)*(pgamma(c+o,y+2) - pgamma(o,y+2))+ 
+.estimateMethPois=function(y,c,o) {
+    n=length(y)
+    if(length(c)!=n ||length(o)!=n){
+        stop("argument length missmatch")
+    }
+    return(( (y+1)*(pgamma(c+o,y+2) - pgamma(o,y+2))+ 
         o* (pgamma(o,y+1) - pgamma(c+o,y+1) ) )/
-        (c*(pgamma(o+c, y+1) - pgamma(o,y+1))) 
+        (c*(pgamma(o+c, y+1) - pgamma(o,y+1))) )
+}
 
 .delta=function(y,c,o,p,x) 
     (pgamma(o+c*x,y+1)- pgamma(o,y+1))/(pgamma(o+c,y+1)- pgamma(o,y+1)) -p
@@ -195,8 +258,12 @@ getNormMatrix<-function(qs, methods,windows,samples, pseudocount=0,cfCut=3){
 #use binary search to find the inverse
 .estimateMethPoisInv=function(beta,c,o,tol=.01, eps=1e-16, nIter=20) {
     n=length(beta)
-    c=rep(c, length.out=n)
-    o=rep(o, length.out=n)
+    n=length(y)
+    if(length(c)!=n ||length(o)!=n){
+        stop("argument length missmatch")
+    }
+    #c=rep(c, length.out=n)
+    #o=rep(o, length.out=n)
     todo=which(!(is.na(beta) | is.na(c) | is.na(o) | c==0))
     y=matrix(c(rep(0,n),beta*c+o),n,2)    
     lessThan0=which(.estimateMethPois(y[todo,1],c[todo],o[todo])>beta[todo])
@@ -235,8 +302,11 @@ getNormMatrix<-function(qs, methods,windows,samples, pseudocount=0,cfCut=3){
 .estimateQuantilePois<-function(y,c,o, p=.5,tol=.001, eps=1e-16 ){
         niter=ceiling(log2(1/tol))
     n=length(y)
-    c=rep(c, length.out=n)
-    o=rep(o, length.out=n)
+    if(length(c)!=n ||length(o)!=n){
+        stop("argument length missmatch")
+    }
+    #c=rep(c, length.out=n)
+    #o=rep(o, length.out=n)
     q=idx=rep(-1,n)
     x=delta_val=matrix(c(0,1),n,2, byrow=TRUE)#upper and lower bounds
     delta_val=matrix(c(.delta(y,c,o,p,x[,1]),.delta(y,c,o,p,x[,2])),n,2)
@@ -286,17 +356,23 @@ estimateEnrichmentLM<-function(qs,windowIdx, signal, min_wd=5,
     if(missing (signal)){
             stop("plese provide a calibration signal or trimQuantile")
     }
-    if (class(signal)=="numeric" && length(signal)==1)
-        signal=matrix(signal, m,n)
-    if (class(signal)=="numeric" && length(signal)==m && n==1)
-        signal=matrix(signal, m,1)
-    if(n != ncol(signal) )
-        stop("number of samples (",n, ") does not match number of columns (",
-            ncol(signal),") in \"signal\"")
-    if(m != nrow(signal) )
-        stop("number of windows (",m, ") does not match number of rows (",
-            nrow(signal),") in \"signal\"")
-    
+    if (class(signal)=="numeric") {
+        if(length(signal)==1)
+            type="allSame"
+        else if(length(signal)!=m)
+            stop("number of windows (",m, ") does not match number of values (",
+                length(signal),") in \"signal\"")
+        else type="onePerWd"
+    }else if (class(signal)=="matrix") {
+        if(n != ncol(signal) )
+            stop("number of samples (",n,") does not match number of columns (",
+                ncol(signal),") in \"signal\"")
+        if(m != nrow(signal) )
+            stop("number of windows (",m,") does not match number of rows (",
+                nrow(signal),") in \"signal\"")
+            type="individual"
+    }else{stop("signal must be provided as numeric vector or matrix, but is ",
+        class(signal))}
     patternD=mcols(getRegions(qs))[windowIdx, paste0(pattern_name,"_density")]
         
     nbin=length(bins)-1
@@ -308,13 +384,21 @@ estimateEnrichmentLM<-function(qs,windowIdx, signal, min_wd=5,
     norm_method$beta=norm_method$beta[-grep("enrichment", norm_method$beta)]
     vals=getNormalizedValues(qs,methods=norm_method, windows=windowIdx, 
         samples=samples)
+    getSignal<-function(signal,wd,sa,type){
+        switch(type,
+            allSame=signal,
+            onePerWd=signal[wd],
+            individual=signal[wd,sa])}
+
     for(i in seq_len(nbin)){
         dcw=which(patternD>=bins[i] & patternD < bins[i+1])
         bin_median[i]=median(patternD[dcw])
         bin_n[i]=length(dcw)
+
         if(length(dcw)>=min_wd*(1-2*trim)){
             for(j in seq_len(n))
-                cf[i,j]=mean(vals[dcw,j]/signal[dcw,j], na.rm=TRUE, trim=trim)
+                cf[i,j]=mean(vals[dcw,j]/
+                    getSignal(signal,dcw,j,type), na.rm=TRUE, trim=trim)
 
         }
     }    
@@ -363,8 +447,9 @@ estimateOffset<-function(qs,enrichmentPattern, maxPatternDensity=0.01){
 
     bg=which(patternD <= maxPatternDensity)
     nna=!is.na(patternD)
-    fraction=length(bg)/
-        sum(apply(FUN=any, X=!is.na(mcols(getRegions(qs))) , MARGIN=1 ))
+    nValid=sum(nna)
+    #sum(apply(FUN=any, X=!is.na(mcols(getRegions(qs))) , MARGIN=1 ))
+    fraction=length(bg)/ nValid
     if(length(bg)<100) 
         stop("not enough windows with enrichment pattern density of at most ", 
         maxPatternDensity, 
@@ -382,7 +467,8 @@ estimateOffset<-function(qs,enrichmentPattern, maxPatternDensity=0.01){
 }
 
 findSeqPref<-function(qs,file_name, fragment_length, paired, 
-        uniquePos, alpha, pseudocount, cut){
+        uniquePos, alpha, pseudocount,minMapQual, cut,
+        parallel=FALSE){
     samples=getSampleTable(qs)
     Regions=getRegions(qs)
     
@@ -395,18 +481,27 @@ findSeqPref<-function(qs,file_name, fragment_length, paired,
     
     message("estimating sequence preference from ",length(sIdx),
         " files in \"",file_name, "\" column...")
-    coverage= matrix(NA,length(Regions), length(sIdx), 
-        dimnames=list(NULL, samples$sample_name[sIdx]))
-    liblab=c("total_fragments", "valid_fragments", "fragment_length", 
-        "fragment_sd", "effective")
-    libraries=matrix(NA, length(sIdx), 5, 
-        dimnames=list(samples$sample_name[sIdx],liblab ))
-    for(sNr in seq_along(sIdx)){
-        cov=getCoverage(Regions,samples[sIdx[sNr],fname_idx], 
-            fragment_length=fragment_length, uniquePos=uniquePos, paired=paired)
-        coverage[,sNr]=cov$counts
-        libraries[sNr,1:4]=cov$fragment    
-    }
+     if(parallel)
+        BPPARAM=bpparam()
+    else
+        BPPARAM=SerialParam()
+
+    
+    #get the read counts in windows
+    coverage=unlist(bplapply(X=samples[sIdx,fname_idx],FUN=getCoverage, 
+            Regions=Regions,fragment_length=fragment_length,
+            minMapQual=minMapQual, paired=paired, uniquePos=uniquePos, 
+            BPPARAM=BPPARAM ), FALSE, FALSE)
+    
+    libraries=matrix(unlist(coverage[seq(2,length(coverage),by=2)],FALSE,FALSE),
+        nrow(samples), 6,byrow=TRUE, dimnames=list(samples$sample_name, 
+            c("total_fragments", "valid_fragments","library_factor", 
+                "fragment_length", "fragment_sd", "offset")))
+
+    coverage=matrix(unlist(coverage[seq(1,length(coverage),by=2)],FALSE,FALSE), 
+        ncol=nrow(samples), byrow=FALSE, 
+        dimnames=list(NULL, samples$sample_name))
+
     message("estimating sequence preference...")
     ws=width(Regions)[1]
     if(hasCNV(qs)){
@@ -426,7 +521,7 @@ findSeqPref<-function(qs,file_name, fragment_length, paired,
         }
     }
     els=colSums(coverage)
-    libraries[,"effective"]=els
+    libraries$effective=els
     mls=median(libraries[,"valid_fragments"])
     
     seqPref=rowSums(coverage)

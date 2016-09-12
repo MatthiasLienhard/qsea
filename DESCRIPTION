@@ -1,18 +1,17 @@
 Package: qsea
 Type: Package
 Title: IP-seq data analysis and vizualization
-Version: 0.99.3
+Version: 0.99.4
 Date: 2016-06-24
 Author: Matthias Lienhard, Lukas Chavez, Ralf Herwig
 Maintainer: Matthias Lienhard <lienhard@molgen.mpg.de>
-Description: qsea (quantitative sequencing enrichment analysis) was
-        developed as the successor of the MEDIPS package for analyzing
-        data derived from methylated DNA immunoprecipitation (MeDIP)
-        experiments followed by sequencing (MeDIP-seq). However, qsea
-        provides several functionalities for the analysis of other
-        kinds of quantitative sequencing data (e.g. ChIP-seq, MBD-seq,
-        CMS-seq and others) including calculation of differential
-        enrichment between groups of samples.
+Description: qsea (quantitative sequencing enrichment analysis) was developed 
+    as the successor of the MEDIPS package for analyzing data derived from 
+    methylated DNA immunoprecipitation (MeDIP) experiments followed by 
+    sequencing (MeDIP-seq). However, qsea provides several functionalities for 
+    the analysis of other kinds of quantitative sequencing data 
+    (e.g. ChIP-seq, MBD-seq, CMS-seq and others) 
+    including calculation of differential enrichment between groups of samples.
 License: GPL (>=2)
 biocViews: Sequencing, DNAMethylation, CpGIsland, ChIPSeq,
         Preprocessing, Normalization, QualityControl, Visualization,
@@ -20,9 +19,10 @@ biocViews: Sequencing, DNAMethylation, CpGIsland, ChIPSeq,
 Depends: R (>= 3.3)
 Imports: Biostrings, graphics, gtools, methods, stats, utils, HMMcopy,
         rtracklayer, BSgenome, GenomicRanges, Rsamtools, IRanges,
-        limma, GenomeInfoDb, BiocGenerics, grDevices, zoo
+        limma, GenomeInfoDb, BiocGenerics, grDevices, zoo, BiocParallel
 VignetteBuilder: knitr
-Suggests: BSgenome.Hsapiens.UCSC.hg19, MEDIPSData, testthat, BiocStyle,
-        knitr, rmarkdown
-ByteCompile: yes
+Suggests: BSgenome.Hsapiens.UCSC.hg19, MEDIPSData, testthat,
+        BiocStyle, knitr, rmarkdown
+ByteCompile: no
+Packaged: 2016-06-17 14:43:54 UTC; lienhard
 NeedsCompilation: yes

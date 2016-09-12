@@ -7,7 +7,8 @@
 counts the reads per genomic window or directly imports 
 coverage files (in wiggle/bigwiggle format)}
 \usage{
-addCoverage(qs, fragment_length, uniquePos=TRUE, minMapQual=1, paired=FALSE)
+addCoverage(qs, fragment_length, uniquePos=TRUE, minMapQual=1, paired=FALSE, 
+parallel=FALSE)
 }
 \arguments{
 \item{qs}{qseaSet object, e.g. produced by the createQseaSet() function}
@@ -19,6 +20,7 @@ and the actual fragments size is used. }
 are considered to be PCR duplicates and replaced by one representative. }
 \item{minMapQual}{The minimal mapping quality for reads to be considered. 
 Note that the definition of mapping quality depends on the alignment tool.}
+\item{parallel}{Switch for parallel computing, using BiocParallel}
 }
 \details{The coverage is imported from the files specified in the file_name 
 column of the sample table, provided for the createQseaSet() function. 

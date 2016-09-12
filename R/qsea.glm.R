@@ -1,6 +1,7 @@
 
 fitNBglm=function(qs,design,link="log",keep, disp_method="region_wise",
-    norm_method="rpkm",init_disp=0.5 ,verbose=TRUE,minRowSum=10,pseudocount=1){
+    norm_method="rpkm",init_disp=0.5 ,verbose=TRUE,minRowSum=10,pseudocount=0 ){
+    #parallel=FALSE){
 
     if(! disp_method %in% 
         c("initial","common", "region_wise", "cutAtQuantiles"))
@@ -18,7 +19,7 @@ fitNBglm=function(qs,design,link="log",keep, disp_method="region_wise",
     if(missing(qs) || class(qs) != "qseaSet")
         stop("please provide a qseaSet")
     if(link !="log")
-        stop("currently \"link\" must be \"log\"")        
+        stop("currently, \"link\" must be \"log\"")        
     message("selecting regions with at least ",minRowSum," reads...")
     
     if(missing(keep)) keep=seq_along(getRegions(qs))
@@ -36,20 +37,28 @@ fitNBglm=function(qs,design,link="log",keep, disp_method="region_wise",
 
     #get normalization factors
     message("deriving normalization factors...")
-    nm=getNormMatrix(qs, methods=norm_method,windows=keep,sampleIdx, 
-        pseudocount,cfCut=0)
+    nm=getNormMatrix(qs, methods=norm_method,windows=keep,sampleIdx)
+    if("enrichment" %in% norm_method){
+       pattern_name=getEnrichmentPattern(qs)
+       cf=mcols(getRegions(qs))[keep,paste0(pattern_name, "_density")]
+       sPar=getEnrichmentParameters(qs)
+       nm$factors=nm$factors*mapply(.sigmF2, MoreArgs=list(x=cf),
+            a=sPar[sampleIdx,"a"],
+            b=sPar[sampleIdx,"b"],
+            c=sPar[sampleIdx,"c"], 
+            o=nm$offset,
+            USE.NAMES = FALSE)+pseudocount
+    }
     normF=nm$factors
-    offset=nm$offset
+    rm(nm)
     #if("offset" %in% norm_method){
     #    offset=t(getOffset(qs, sampleIdx)*t(normF))
     #}
 
     normF[normF<=0]=-Inf
-    isfinite=apply(is.finite(normF), 1,all)
+    #isfinite=apply(is.finite(normF), 1,all)
+    isfinite=is.finite(rowSums(normF))
     normF=normF[isfinite,]
-
-    offset=offset[isfinite,]
-    
     keep=keep[isfinite]
     if(length(init_disp)>1)
         init_disp=init_disp[isfinite]
@@ -60,12 +69,12 @@ fitNBglm=function(qs,design,link="log",keep, disp_method="region_wise",
     #get raw counts
     if(verbose) message("obtaining raw values for ",length(sampleIdx),
         " samples in ",length(keep)," windows")        
-    y=getCounts(qs, windows=keep, samples=sampleIdx)
+    y=getCounts(qs, windows=keep, samples=sampleIdx)+pseudocount
     coef=NULL
     if(fitDisp)    {
         message("initial fit to estimate dispersion")    
-        fullModel=fitNBglmMatrix(design, y=y, nf=normF,offset, link=link, 
-            disp=init_disp,fitDisp=TRUE, pseudocount=pseudocount, maxit=2)
+        fullModel=fitNBglmMatrix(design, y=y, nf=normF, linkf=link, 
+            disp=init_disp,fitDisp=TRUE, maxit=2)#, parallel=parallel)
         if(disp_method=="region_wise"){
             init_disp=fullModel$dispersion
         }else if(disp_method=="common"){
@@ -82,8 +91,8 @@ fitNBglm=function(qs,design,link="log",keep, disp_method="region_wise",
         coef=fullModel$coefficients
     }
     message("fitting GLMs")    
-    fullModel=fitNBglmMatrix(design, y=y, nf=normF,offset, coef=coef, link=link,
-            disp=init_disp,fitDisp=FALSE, pseudocount=pseudocount)
+    fullModel=fitNBglmMatrix(design, y=y, nf=normF, coef=coef, linkf=link,
+            disp=init_disp,fitDisp=FALSE)#, parallel=parallel)
     fullModel$dispersion=init_disp
     return(new('qseaGLM', 
         fullModelDesign=design, 
@@ -96,7 +105,7 @@ fitNBglm=function(qs,design,link="log",keep, disp_method="region_wise",
 }
 
 
-addContrast=function(qs,glm,contrast,coef,name,verbose=TRUE ){
+addContrast=function(qs,glm,contrast,coef,name,verbose=TRUE){#,parallel=FALSE){
     sampleIdx=getSampleNames(glm)
     if(missing(name))
         stop("please specify a name for the contrast")
@@ -121,14 +130,25 @@ addContrast=function(qs,glm,contrast,coef,name,verbose=TRUE ){
     design=design[,-coef, drop=FALSE]
     param=getParameters(glm)
     nm=getNormMatrix(qs, methods=param$norm_method,
-        windows=getWindows(glm),sampleIdx, param$pseudocount,cfCut=0)
-
+        windows=getWindows(glm),sampleIdx)
+    if("enrichment" %in% param$norm_method){
+       pattern_name=getEnrichmentPattern(qs)
+       cf=mcols(getRegions(qs))[getWindows(glm),paste0(pattern_name, "_density")]
+       sPar=getEnrichmentParameters(qs)
+       nm$factors=nm$factors*mapply(.sigmF2, MoreArgs=list(x=cf),
+            a=sPar[sampleIdx,"a"],
+            b=sPar[sampleIdx,"b"],
+            c=sPar[sampleIdx,"c"], 
+            o=nm$offset,
+            USE.NAMES = FALSE)+param$pseudocount
+    }
     normF=nm$factors
-    offset=nm$offset
-    y=getCounts(qs, windows=getWindows(glm), samples=sampleIdx)
-    fit=fitNBglmMatrix(design, y=y, nf=normF,offset=offset, 
-        link=param$link, disp=getFullModel(glm)$dispersion, fitDisp=FALSE, 
-        pseudocount=param$pseudocount)
+    rm(nm)
+
+    y=getCounts(qs, windows=getWindows(glm), samples=sampleIdx)+
+        param$pseudocount
+    fit=fitNBglmMatrix(design, y=y, nf=normF, linkf=param$link,
+        disp=getFullModel(glm)$dispersion, fitDisp=FALSE)#, parallel=parallel)
     df=fit$rdf-getFullModel(glm)$rdf
     LR=fit$deviance-getFullModel(glm)$deviance
     fit$LRT_pval=pchisq(LR,df, lower.tail = FALSE)
@@ -139,30 +159,31 @@ addContrast=function(qs,glm,contrast,coef,name,verbose=TRUE ){
 }
 
 
-fitNBglmMatrix=function(x,y,disp, nf,offset,link="log", maxit=60, coef=NULL,
-    eps=10e-6, pseudocount=1, fitDisp=FALSE){
+fitNBglmMatrix=function(x,y,disp, nf,linkf="log", maxit=60, coef=NULL,
+    eps=10e-6,  fitDisp=FALSE){#, parallel=FALSE){
     #this is an attempt to increase performance of glm.fit for this special case
     #by vector operations
-
+    #if(parallel) 
+    #    BPPARAM=bpparam()
+    
     #link function
     #nf=norm$factors
-    offset=offset+pseudocount
-    y=y+pseudocount
+    #offset=offset+pseudocount
+    y=pmax(y,1)
     #y[y<offset]=offset[y<offset]
     #offset[offset>0]=0
-    if(link=="log"){
-        link=function(mu,nf, o) log2(mu/(nf+o))
-        #linkInv=function(x,nf, o) pmax(2^(x)*nf+o,eps)
-        linkInv=function(eta,nf, o) 2^(eta)*(nf+o)
-        dLinkInv=function(eta,nf, o) 2^(eta)*(nf+o)
+    if(linkf=="log"){
+        link=function(mu,nf) log(mu/nf)
+        linkInv=function(eta,nf) pmax(exp(eta)*nf, .Machine$double.eps)
+        dLinkInv=function(eta,nf) pmax(exp(eta)*nf, .Machine$double.eps)
+
         
-    }else if (link=="linear"){
-        link=function(mu,nf, o) (mu-o)/nf
-        #linkInv=function(x,nf, o) pmax(x*nf+o, eps)
-        linkInv=function(eta,nf, o) pmax(eta*nf+o,0.1*o)
-        dLinkInv=function(eta,nf, o) nf
-    }
-    else(stop ("unknown link function"))
+    }else if (link=="linear"){#this is not usefull at the moment
+        link=function(mu,nf) mu/nf
+        #linkInv=function(x,nf, o) pmax(x*nf+t(o+t(nf)), eps)
+        linkInv=function(eta,nf) pmax(eta*nf,eps)
+        dLinkInv=function(eta,nf) nf
+    }else(stop ("unknown link function"))
     variance=function(mu, disp) mu+mu^2*disp
     rdf=nrow(x)-qr(x)$rank
 
@@ -181,35 +202,53 @@ fitNBglmMatrix=function(x,y,disp, nf,offset,link="log", maxit=60, coef=NULL,
         coef_old=NULL
         mu=y
         mu[mu<1/6]=1/6    
-        eta=link(mu, nf, offset)    
+        eta=link(mu, nf)    
         coef=matrix(0,n,dim(x)[2])
     }else{
         coef_old=coef
         eta = t(x %*% t(coef))
-        mu = linkInv(eta, nf, offset)
+        mu = linkInv(eta, nf)
         dev=dev_old=rowSums(dev.resids(y, mu, disp))
     }
     conv=rep("no",n)
     newConv=numeric(0)
-    fail=numeric(0)
     todo=seq_len(n)
     #IRLS
     #message("fitting GLMs")
     for (iter in 1L:maxit) {
 
-        message("iteraiton ", iter,": " )
-        mu.eta.val=dLinkInv(eta, nf, offset)
-        z = eta + (y[todo,] - mu)/mu.eta.val
+        message("iteration ", iter,": " )
+        #if(length(todo)<1e5)
+        #    parallel=FALSE #not worth to split
+        mu.eta.val=dLinkInv(eta, nf)
+        #z = eta + (y[todo,] - mu)/mu.eta.val
         w = sqrt((mu.eta.val^2)/variance(mu, disp[todo]))
-        for(i in seq_along(todo) ){
-            fit = .Call("Cdqrls", x*w[i,], z[i,] * w[i,], eps, 
-                check = FALSE, PACKAGE = "qsea")
-            coef[todo[i],fit$pivot] = fit$coefficients
-            #Cdqrls is taken from stats package
-            #todo: make the loop in the c function to increase performance
+        zw =w* (eta + (y[todo,] - mu)/mu.eta.val)
+        FUN<-function(i){#Cdqrls is taken from stats package
+                ret=numeric(nvars)
+                fit = .Call("Cdqrls",x*w[i,], zw[i,], tol=eps, 
+                    check = FALSE, PACKAGE = "qsea")
+                ret[fit$pivot]=fit$coefficients
+                ret
         }
+        #if(parallel){
+        #    coef[todo, ]=matrix(unlist(
+        #        bplapply(seq_along(todo) , FUN,BPPARAM=BPPARAM),
+        #        FALSE, FALSE),ncol=2,  byrow=TRUE)
+        #}else
+            coef[todo, ]=t(vapply(seq_along(todo) , FUN, numeric(nvars)))
+        rm(w)
+        rm(zw)
+        rm(mu.eta.val)
+        #
+        #for(i in seq_along(todo) ){
+        #    fit = .Call("Cdqrls", x*w[i,], z[i,] * w[i,], eps, 
+        #        check = FALSE, PACKAGE = "qsea")
+        #    coef[todo[i],fit$pivot] = fit$coefficients
+            #Cdqrls is taken from stats package
+        #}
         eta = t(x %*% t(coef[todo,, drop=FALSE]))
-        mu = linkInv(eta ,nf, offset)
+        mu = linkInv(eta ,nf)
         dev[todo] = rowSums(dev.resids(y[todo,, drop=FALSE], mu, disp[todo])) 
         #sometimes glms increase in deviance... adapt stepsize
         increase=which(dev[todo]>dev_old[todo])
@@ -219,7 +258,7 @@ fitNBglmMatrix=function(x,y,disp, nf,offset,link="log", maxit=60, coef=NULL,
                 coef_old[todo[increase],,drop=FALSE])/2
             eta[increase,] = t(x %*% t(coef[todo[increase],, drop=FALSE]))
             mu[increase,] = linkInv(eta[increase,,drop=FALSE] ,
-                nf[increase,,drop=FALSE], offset[increase,,drop=FALSE])
+                nf[increase,,drop=FALSE])
             dev[todo[increase]] = 
                 rowSums(dev.resids(y[todo[increase],, drop=FALSE], 
                     mu[increase,,drop=FALSE], disp[todo[increase]])) 
@@ -241,8 +280,7 @@ fitNBglmMatrix=function(x,y,disp, nf,offset,link="log", maxit=60, coef=NULL,
                     eta=eta[-newConv,,drop=FALSE]
                     mu=mu[-newConv,,drop=FALSE]
                     nf=nf[-newConv,,drop=FALSE]
-                    if(!is.null(dim(offset)))
-                        offset=offset[-newConv, ,drop=FALSE]
+                    
             }
         }
         dev_old = dev
@@ -252,6 +290,8 @@ fitNBglmMatrix=function(x,y,disp, nf,offset,link="log", maxit=60, coef=NULL,
     if(fitDisp){
         disp=1/theta_md_matrix(y,mu,rdf)        
     }else{disp=NA}
+    if(linkf=="log")
+        coef=coef/log(2)
     return(list(coefficients=coef,dispersion=disp, 
         converged=conv, rdf=rdf, deviance=dev))
 }

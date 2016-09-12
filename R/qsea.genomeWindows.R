@@ -24,7 +24,7 @@ makeGenomeWindows<-function(BSgenome=NULL, chr.select=NULL, window_size=250){
     }
     nr_wd=floor(chr_length/window_size)
     wd_start=unlist(lapply(FUN=seq, X=chr_length-window_size, 
-        from=1,by=window_size))    
+        from=1,by=window_size), FALSE, FALSE)    
     seqinfo = Seqinfo(chr,chr_length, NA, BSgenome)
     return(Regions=GRanges(seqnames=rep(factor(chr),nr_wd), 
         ranges=IRanges(start=wd_start, width=window_size), seqinfo=seqinfo))

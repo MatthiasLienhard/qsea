@@ -6,6 +6,13 @@
 getPCA<-function(qs, chr=getChrNames(qs),ROIs, minRowSum=20, keep,norm_method=
         normMethod(logRPM=c("log", "library_size","cnv","preference","psC10")),
         topVar=1000, samples=seq_len(nrow(getSampleTable(qs)))){
+    
+    if(is.null(samples))
+        samples=    getSampleNames(qs)
+    else if (is.numeric(samples))
+        samples=getSampleNames(qs, samples)
+    if(!all(samples %in% getSampleNames(qs)))
+        stop("unknown samples selected")
     if(missing(keep)) 
         keep=which(rowSums(getCounts(qs)) >= minRowSum )
     else
@@ -13,43 +20,48 @@ getPCA<-function(qs, chr=getChrNames(qs),ROIs, minRowSum=20, keep,norm_method=
     if(class(norm_method)=="character"){
         norm_method=normMethod(norm_method)
     }
-    keep=keep[as.character(seqnames(getRegions(qs)[keep])) %in% chr]
-    if(is.null(samples))
-        samples=    getSampleNames(qs)
-    else if (is.numeric(samples))
-        samples=getSampleNames(qs, samples)
+    if(! all( getChrNames(qs) %in% chr ))
+        keep=keep[as.character(seqnames(getRegions(qs)[keep])) %in% chr]
     if(! missing (ROIs) ){
         if(ncol(as.data.frame(mcols(ROIs)))==0){
             mcols(ROIs)=paste("ROI", seq_along(ROIs))
         }
-        m=findOverlaps(query=getRegions(qs)[keep],subject=ROIs, select="first")
-        keep=keep[!is.na(m)]
-        if(ncol(as.data.frame(mcols(ROIs)))==1)
-            names=as.data.frame(mcols(ROIs[m[!is.na(m)]]))[,1]
-        else
-            names=apply(X=as.data.frame(mcols(ROIs[m[!is.na(m)]])),
-                FUN=paste,MARGIN=1, collapse="_")
-    }else{
-        names=paste0(seqnames(getRegions(qs)[keep]), ":", 
-            start(getRegions(qs)[keep]), "-", end(getRegions(qs)[keep]))
+        #m=findOverlaps(query=getRegions(qs)[keep],subject=ROIs, select="first")
+        keep=keep[overlapsAny(query=getRegions(qs)[keep],subject=ROIs)]
     }
     if(length(keep)<=10){
         stop("not enough regions left:",length(keep)," Regions, minimum is 10")
     }
     vals=getNormalizedValues(qs,methods=norm_method, 
         windows=keep, samples=samples)
-    missing=apply(X=is.na(vals), MARGIN=1, FUN=any)
+    missing=rowSums(is.na(vals))>0
     vals=vals[!missing,]-rowMeans(vals[!missing,])
     if(any(!is.finite(vals))){
         stop("Infinite values due to log or logit transformation. ",
             "Please specify minVal and maxVal.")
     }
     if(!is.null(topVar) && nrow(vals)>topVar){
-        rv=apply(vals,1,var)
+        #rv=apply(vals,1,var) #this is slow
+        #rv=rowSums((vals - rowMeans(vals))^2)/(dim(vals)[2] - 1)
+        #since only the order matters:
+        rv=rowSums((vals - rowMeans(vals))^2)
         th=sort(rv,decreasing=TRUE)[topVar]
         vals=vals[rv>=th,]
-        names=names[rv>=th]
+        keep=keep[rv>=th]
     }
+    #make names for the selected regions
+    if(! missing (ROIs) && ncol(mcols(ROIs))>0 ){
+        m=findOverlaps(query=getRegions(qs)[keep],subject=ROIs, select="first")
+        if(ncol(as.data.frame(mcols(ROIs)))==1)
+            names=as.character(mcols(ROIs[m])[,1])
+        else
+            names=do.call(mapply,c(as.list(mcols(ROIs[m])),FUN=paste,
+                MoreArgs = list(sep="_")))
+    }else{
+        names=paste0(seqnames(getRegions(qs)[keep]), ":", 
+            start(getRegions(qs)[keep]), "-", end(getRegions(qs)[keep]))
+    }
+
     svdVals=svd(vals)
     new('qseaPCA', svd=svdVals, sample_names=samples, 
         factor_names=as.character(names))

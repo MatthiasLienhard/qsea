@@ -1,5 +1,6 @@
 makeTable<-function(qs,glm,norm_methods="counts",samples,groupMeans, keep, ROIs,
-    annotation, minPvalSummarize, CNV=FALSE, verbose=TRUE, minEnrichment=3){
+    annotation, minPvalSummarize, CNV=FALSE, verbose=TRUE, minEnrichment=3, 
+    chunksize=1e5){
     if(missing(samples))
         samples=NULL
     if(missing(groupMeans))
@@ -117,7 +118,7 @@ makeTable<-function(qs,glm,norm_methods="counts",samples,groupMeans, keep, ROIs,
     if(length(groupMeans)>0 || length(samples)>0)
         count_tab=getNormalizedValues(qs, methods=norm_methods ,windows=keep,
             samples=samples,groupMeans=groupMeans,verbose=verbose, 
-            minEnrichment=minEnrichment)
+            minEnrichment=minEnrichment, chunksize=chunksize)
     else
         count_tab=as.data.frame(matrix(NA,n,0))
     cnv_tab=as.data.frame(matrix(NA,n,0))
@@ -142,12 +143,17 @@ makeTable<-function(qs,glm,norm_methods="counts",samples,groupMeans, keep, ROIs,
             if(m==0)
                 ol$anno_names=rep("yes",nrow(ol) )
             else if(m==1)
-                ol$anno_names=as.data.frame(
-                    mcols(annotation[[reg]][ol[,2]]))[,1]
+                ol$anno_names=as.character(
+                    mcols(annotation[[reg]][ol[, 2]])[,,drop=TRUE])
             else
-                ol$anno_names=apply(
-                    X=as.data.frame(mcols(annotation[[reg]][ol[,2]])),
-                    MARGIN=1,FUN=paste,collapse="_")
+                ol$anno_names=do.call(mapply,
+                    c(as.list(mcols(annotation[[reg]][ol[,2]])),FUN=paste,
+                    MoreArgs = list(sep="_")))
+                #ol$anno_names=apply(
+                #   X=as.data.frame(mcols(annotation[[reg]][ol[,2]])),
+                #   MARGIN=1,FUN=paste,collapse="_")
+
+
             ol=ol[!duplicated(ol[,c(1,3)]),]
             anno_names=sapply(split(x=ol$anno_names, f=ol$queryHits),
                 paste,collapse=",")

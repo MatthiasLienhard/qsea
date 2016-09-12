@@ -4,7 +4,7 @@
 setClass(Class = 'qseaSet', 
     representation = representation(sampleTable='data.frame',
                     count_matrix='matrix',
-                    ploidity='matrix',
+                    zygosity='matrix',
                     regions='GenomicRanges', 
                     cnv='GenomicRanges',    
                     parameters='list', 
@@ -68,24 +68,18 @@ setGeneric('getGenome', function(object)
 setMethod('getGenome','qseaSet', function(object) 
         object@parameters$BSgenome )
 
-setGeneric('getPloidity', function(object) 
-        standardGeneric('getPloidity'))
-setMethod('getPloidity','qseaSet', function(object) 
-        object@ploidity )
+setGeneric('getZygosity', function(object) 
+        standardGeneric('getZygosity'))
+setMethod('getZygosity','qseaSet', function(object) 
+        object@zygosity )
 
-setGeneric('setPloidity', function(object,...) 
-        standardGeneric('setPloidity'))
-setMethod('setPloidity','qseaSet', function(object, ploidityMatrix) {
-        if(missing(ploidityMatrix))
-            stop("provide a ploidity Matrix")
+setGeneric('setZygosity', function(object,...) 
+        standardGeneric('setZygosity'))
+setMethod('setZygosity','qseaSet', function(object, zygosityMatrix) {
+        if(missing(zygosityMatrix))
+            stop("provide a zygosity Matrix")
         #add checks of row and column names
-        object@ploidity=ploidityMatrix 
-        cnv=GRanges(seqnames=seqlevels(getRegions(object)),
-            IRanges(start=1, end=seqlengths(getRegions(object))))
-        cnv_val=t(log2(ploidityMatrix/2))
-        cnv_val[!is.finite(cnv_val)]=NA
-        mcols(cnv)=cnv_val
-        object@cnv=cnv
+        object@zygosity=zygosityMatrix 
         object
 })
 
@@ -207,24 +201,26 @@ normMethod<-function(methods=NULL,...){
         reads="",
         counts="",
         beta=c("enrichment", "cnv", "library_size","region_length", 
-            "preference", "offset"),
+            "preference", "offset", "zygosity"),
         logitbeta=c("logit","enrichment", "cnv", "library_size",
-            "region_length", "preference", "offset"),
+            "region_length", "preference", "offset", "zygosity"),
         betaMedian=c("enrichment", "cnv", "library_size","region_length", 
-            "preference","q50", "offset"),
+            "preference","q50", "offset", "zygosity"),
         betaLB=c("enrichment", "cnv", "library_size","region_length", 
-            "preference","q2.5", "offset"),
+            "preference","q2.5", "offset", "zygosity"),
         betaUB=c("enrichment", "cnv", "library_size","region_length", 
-            "preference","q97.5", "offset"), 
+            "preference","q97.5", "offset", "zygosity"), 
         rpm="library_size",
-        nrpm=c("cnv", "library_size", "preference"),
-        rpkm=c("library_size", "region_length"),
-        nrpkm=c("cnv", "library_size","region_length", "preference"),
-        lognrpkm=c("log", "cnv", "library_size","region_length", "preference")
+        nrpm=c("cnv", "library_size", "preference", "zygosity"),
+        rpkm=c("library_size", "region_length", "zygosity"),
+        nrpkm=c("cnv", "library_size","region_length", "preference", 
+            "zygosity"),
+        lognrpkm=c("log", "cnv", "library_size","region_length", "preference", 
+            "zygosity")
     )
     #valid normalization methods
-    vnm=c("enrichment", "cnv", "library_size","region_length", "preference", 
-            "offset", "log", "logit","")#& psC and qXX.YY(checked via regexpr)
+    vnm=c("enrichment", "cnv", "zygosity", "library_size","region_length", 
+            "preference",  "offset", "log", "logit","")#+ psC& qXX.YY (regexpr)
     numbered_vnm=c("psC", "q", "minCut", "maxCut", "scaleF")
         #issues: q>100 possible, negative values not possible
     if(missing(methods))

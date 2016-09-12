@@ -9,7 +9,8 @@ enrichment sequencing data, by incorporating functions of the HMMcopy package.
 }
 \usage{
 addCNV(qs,file_name, window_size=1000000, paired=FALSE, fragment_length,cnv, 
-mu=log2(c(1/2, 2/3, 1, 3/2,2,3)), normal_idx, plot_dir, MeDIP=FALSE)
+mu=log2(c(1/2, 2/3, 1, 3/2,2,3)), normal_idx, plot_dir, MeDIP=FALSE, 
+parallel=FALSE)
 }
 \arguments{
 \item{qs}{the qseaSet object}
@@ -32,6 +33,7 @@ mu=log2(c(1/2, 2/3, 1, 3/2,2,3)), normal_idx, plot_dir, MeDIP=FALSE)
     enriched sequencing data. In this case, only fragments without CpG 
     dinucleotides are considered. This option allows QSEA to infer CNV 
     information from MeDIP or MDB seq experiments directly}
+\item{parallel}{Switch for parallel computing, using BiocParallel}
 }
 \value{
 The qseaSet object, extended by the CNV information

@@ -153,7 +153,7 @@ As MeDIP seq read coverage is dependent on the CpG density of the fragment,
 we estimate the average CpG density per fragment for each genomic window.
 
 ```{r, collapse=TRUE}
-qseaSet=addPatternDensity(qseaSet, "CG", name="CpG")
+qseaSet=addPatternDensity(qseaSet, "CG", name="CpG",fragment_sd=0)
 ```
 
 From the regions without CpGs we can estimate the coverage 
@@ -184,7 +184,7 @@ qseaSet=addEnrichmentParameters(qseaSet, pattern_name="CpG",
 
 We can now create an output table with raw counts 
 (_reads) estimated % methylation values (_beta), 
-as well as an 95% credibility interval [_betaLB, _betaUB] 
+as well as an 95% credibility interval [_betaLB, _betaUB] q
 for the estimates for all windows within a region of interest, 
 in this case a particular CpG Island:
 

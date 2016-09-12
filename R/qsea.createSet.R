@@ -29,7 +29,7 @@ createQseaSet=function(sampleTable,BSgenome,chr.select,Regions,window_size=250)
     }
     chrN=mixedsort(levels(seqnames(Regions)))
     
-    plM=matrix(2,nrow(sampleTable), length(chrN), 
+    cyM=matrix(2,nrow(sampleTable), length(chrN), 
         dimnames=list(sampleTable$sample_name,chrN ))
     sexIdx=match(c("sex", "gender"), names(sampleTable))
     sexIdx=head(sexIdx[!is.na(sexIdx)],1)
@@ -37,30 +37,25 @@ createQseaSet=function(sampleTable,BSgenome,chr.select,Regions,window_size=250)
         sex=rep("unknown", nrow(sampleTable))
         if(any(c("X", "Y","chrX", "chrY") %in% chrN))
             warning("no column \"sex\" or \"gender\"found in sampleTable, ",
-                "assuming diploidity for all selected chromosomes")
+                "assuming heterozygosity for all selected chromosomes")
     }else{
         sex=sampleTable[,sexIdx]
         mIdx=sex %in% c("M","m", "male")
         fIdx=sex %in% c("F","f", "female")
-        yIdx=colnames(plM) %in% c("Y", "chrY")
-        xIdx=colnames(plM) %in% c("X", "chrX")
+        yIdx=colnames(cyM) %in% c("Y", "chrY")
+        xIdx=colnames(cyM) %in% c("X", "chrX")
         if (any(!(mIdx|fIdx)))
             warning("unknown sex specified sampleTable for sample(s) ",
-                paste(rownames(plM)[!(mIdx|fIdx)],collapse=", "),
-                "; assuming diploidity for all selected chromosomes")
-        plM[mIdx,yIdx|xIdx]=1
-        plM[fIdx,yIdx]=0
+                paste(rownames(cyM)[!(mIdx|fIdx)],collapse=", "),
+                "; assuming heterozygosity for all selected chromosomes")
+        cyM[mIdx,yIdx|xIdx]=1
+        cyM[fIdx,yIdx]=0
     }
-    cnv=GRanges(seqnames=seqlevels(Regions),
-        IRanges(start=1, end=seqlengths(Regions)))
-    cnv_val=t(log2(plM/2))
-    cnv_val[!is.finite(cnv_val)]=NA
-    mcols(cnv)=cnv_val
     qs=new('qseaSet', sampleTable=sampleTable,
                 regions=Regions,
-                ploidity=plM,
+                zygosity=cyM,
                 count_matrix=matrix(), 
-                cnv=cnv, #logFC
+                cnv=GRanges(), #logFC
                 parameters=parameters, 
                 libraries=list(), 
                 enrichment=list()
@@ -145,7 +140,7 @@ addPatternDensity<-function(qs, pattern,name, fragment_length, fragment_sd,
 }
 
 addCoverage<-function(qs, fragment_length, uniquePos=TRUE, minMapQual=1, 
-        paired=FALSE){
+        paired=FALSE, parallel=FALSE){
     sampleTable=getSampleTable(qs)
     Regions=getRegions(qs)
     if(paired)
@@ -154,18 +149,26 @@ addCoverage<-function(qs, fragment_length, uniquePos=TRUE, minMapQual=1,
         stop("for unpaired reads, please specify fragment length")
     fname_idx=which(names(sampleTable)=="file_name" )[1]
     # get the coverage
-    coverage= matrix(NA,length(Regions), nrow(sampleTable), 
-        dimnames=list(NULL, sampleTable$sample_name))
-    libraries=matrix(NA, nrow(sampleTable), 6, 
-        dimnames=list(sampleTable$sample_name, 
+    if(parallel) {  
+        BPPARAM=bpparam()
+        message("Scanning ",bpworkers(BPPARAM) , " files in parallel")
+    }else
+        BPPARAM=SerialParam()
+    
+    coverage=unlist(bplapply(X=sampleTable[,fname_idx],FUN=getCoverage, 
+            Regions=Regions,fragment_length=fragment_length,
+            minMapQual=minMapQual, paired=paired, uniquePos=uniquePos, 
+            BPPARAM=BPPARAM ),FALSE, FALSE)
+    
+    libraries=matrix(unlist(coverage[seq(2,length(coverage),by=2)],FALSE,FALSE),
+        nrow(sampleTable),6, byrow=TRUE, dimnames=list(sampleTable$sample_name, 
             c("total_fragments", "valid_fragments","library_factor", 
                 "fragment_length", "fragment_sd", "offset")))
-    for(sNr in seq_len(nrow(sampleTable))){
-        cov=getCoverage(Regions, sampleTable[sNr,fname_idx], fragment_length, 
-            minMapQual, uniquePos, paired)
-        coverage[,sNr]=cov$counts
-        libraries[sNr,c(1,2,4,5)]=cov$fragment        
-    }
+
+    coverage=matrix(unlist(coverage[seq(1,length(coverage),by=2)],FALSE,FALSE), 
+        ncol=nrow(sampleTable), byrow=FALSE, 
+        dimnames=list(NULL, sampleTable$sample_name))
+
     qs=setCounts(qs,count_matrix=coverage)
     setLibrary(qs, "file_name", libraries)
 }
@@ -200,7 +203,8 @@ estimateLibraryFactors<-function(qs,trimA=c(.5,.99), trimM=c(.1,.9),
     others=seq_len(n)[-ref]
     tReg=length(getRegions(qs))
     libsz=getLibSize(qs, normalized=FALSE)
-    values=getNormalizedValues(qs,methods=list(scaled=c("cnv", "preference")),
+    normM=list(scaled=c("zygosity","cnv", "preference"))
+    values=getNormalizedValues(qs,methods=normM,
         windows=seq(from=1,to=tReg,by=max(1,round(tReg/nReg))), 
         samples=getSampleNames(qs) )
     values[values<1]=NA
@@ -232,7 +236,11 @@ estimateLibraryFactors<-function(qs,trimA=c(.5,.99), trimM=c(.1,.9),
             
         }
     }
-    return(exp(tmm-mean(tmm)))
+    if(any(is.na(tmm))){
+        warning("tmm normalization faild")
+        return(rep(1,n))
+    }else
+        return(exp(tmm-mean(tmm)))
 }
 
 

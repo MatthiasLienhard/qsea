@@ -13,15 +13,12 @@ getExampleQseaSet<-function(CpG=TRUE,CNV=TRUE,repl=2,
 
     reg=GRanges("chr1", IRanges(seq(1,5000000,ws), width=ws),
         seqinfo=Seqinfo("chr1", 5000000, genome="Examplegenome"))
-    plM=matrix(2,nrow(sampleTable), 1, 
+    zyM=matrix(2,nrow(sampleTable), 1, 
         dimnames=list(sampleTable$sample_name,"chr1" ))
-    cnv=GRanges(seqnames=seqlevels(reg),
-        IRanges(start=1, end=seqlengths(reg)))
-    mcols(cnv)=t(log2(plM/2))
-
+    
     qs=new('qseaSet', sampleTable=sampleTable,
                 regions=reg,
-                ploidity=plM,
+                zygosity=zyM,
                 count_matrix=matrix(), 
                 cnv=GRanges(), 
                 parameters=list(window_size=ws, BSgenome="example_genome"), 
@@ -57,6 +54,8 @@ getExampleQseaSet<-function(CpG=TRUE,CNV=TRUE,repl=2,
             samples=gr$Tumor)$factors
         nfN=getNormMatrix(qs, methods=nm, windows=seq_along(reg), 
             samples=gr$Normal)$factors
+        
+        
         cpg[is.na(cpg)]=0
         trueMethN[is.na(trueMethN)]=0
         trueMethT[is.na(trueMethT)]=0

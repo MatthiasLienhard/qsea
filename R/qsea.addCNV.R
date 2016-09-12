@@ -2,7 +2,8 @@
 findCNV<-function(sampleTable=NULL,BSgenome,chr.select=NULL,
         file_name="CNV_file_name",fragment_length=NULL, uniquePos=TRUE, 
         paired=FALSE, mu =log2(c(1/2, 2/3, 1, 3/2,2,3)), window_size=1000000, 
-        normal_idx=NULL, plot_dir=NULL, MeDIP=FALSE,ploidity=NA){
+        normal_idx=NULL, plot_dir=NULL, MeDIP=FALSE,zygosity=NA,
+        parallel=FALSE){
     checkSamples(sampleTable)
     CpGrange=NULL    
     if(!MeDIP)
@@ -51,18 +52,25 @@ findCNV<-function(sampleTable=NULL,BSgenome,chr.select=NULL,
                 seqinfo=seqinfo(CNV_Regions)))
         }
     }
+    
+    if(parallel) {  
+        BPPARAM=bpparam()
+        message("Scanning ",bpworkers(BPPARAM) , " files in parallel")
+    }else
+        BPPARAM=SerialParam()
+    
     #get the read counts in windows
-    counts=matrix(NA,length(CNV_Regions), n)
-    for(sNr in seq_len(n)){
-        message(file_names[sNr])
-        counts[,sNr]=getCoverage(Regions=CNV_Regions,file_name=file_names[sNr],
+    counts=unlist(bplapply(X=file_names,FUN=getCoverage, Regions=CNV_Regions,
             paired=paired, uniquePos=uniquePos, fragment_length=fragment_length,
-            CpGrange=CpGrange, CpGpos=CpGpos)$counts
-    }
+            CpGrange=CpGrange, CpGpos=CpGpos,
+            BPPARAM=BPPARAM), FALSE, FALSE)
+    
+    counts=matrix(unlist(counts[seq(1,to=length(counts), by=2)],FALSE, FALSE), 
+        ncol=length(file_names), byrow=FALSE)
     #library size normalization using median
     
-    #ploidity=getPloidity(qs)
-    olPl=match(as.character(seqnames(CNV_Regions)), colnames(ploidity))        
+    #zygosity=getZygosity(qs)
+    olCy=match(as.character(seqnames(CNV_Regions)), colnames(zygosity))        
 
 
     counts[counts==0]=NA
@@ -87,7 +95,7 @@ findCNV<-function(sampleTable=NULL,BSgenome,chr.select=NULL,
     #warn if medians are small
     if(any(nf<100, na.rm=TRUE) )
         warning("Low coverage in CNV files. Consider larger CNV_window_size")
-    values=t(t(counts)/ploidity[,olPl]/nf)
+    values=t(t(counts)/zygosity[,olCy]/nf)
     isna=!is.finite(values)|is.na(values)
     
     #CNV analysis
@@ -140,7 +148,7 @@ findCNV<-function(sampleTable=NULL,BSgenome,chr.select=NULL,
 
 addCNV<-function(qs,file_name, window_size=1000000, paired=FALSE, 
         fragment_length=NULL,cnv=NULL, mu =log2(c(1/2, 2/3, 1, 3/2,2,3)), 
-        normal_idx=NULL, plot_dir=NULL, MeDIP=FALSE){    
+        normal_idx=NULL, plot_dir=NULL, MeDIP=FALSE, parallel=FALSE){    
     if(! missing(cnv) ){
         if(class(cnv)!="GRanges")
             stop("please provide CNVs as GRange object")
@@ -150,7 +158,7 @@ addCNV<-function(qs,file_name, window_size=1000000, paired=FALSE,
         BSgenome=getGenome(qs),file_name=file_name, chr.select=getChrNames(qs),
         window_size=window_size, paired=paired, fragment_length=fragment_length,
         mu=mu, normal_idx=normal_idx, plot_dir=plot_dir, MeDIP=MeDIP, 
-        ploidity=getPloidity(qs))) 
+        zygosity=getZygosity(qs), parallel=parallel)) 
     #todo: add option to use regions of interest, not bsgenome    
     if(! all(is.na(getOffset(qs) )) )
         warning("Consider recalculating offset based on new CNV values")

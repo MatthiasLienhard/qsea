@@ -17,8 +17,8 @@
 \alias{getNormFactors,qseaSet-method}
 \alias{getCNV,qseaSet-method}
 \alias{getCounts,qseaSet-method}
-\alias{getPloidity,qseaSet-method}
-\alias{setPloidity,qseaSet-method}
+\alias{getZygosity,qseaSet-method}
+\alias{setZygosity,qseaSet-method}
 
 \alias{getWindowSize}
 \alias{getSampleTable}
@@ -33,8 +33,8 @@
 \alias{getNormFactors}
 \alias{getParameters}
 \alias{getRegions}
-\alias{getPloidity}
-\alias{setPloidity}
+\alias{getZygosity}
+\alias{setZygosity}
 
 \title{qseaSet class and its methods}
 
@@ -50,8 +50,8 @@ regions, and optionally CNV information.
     the sample table}
     \item{\code{count_matrix}:}{Object of class \code{"matrix"}: 
     matrix containing the coverage for all samples}
-    \item{\code{ploidity}:}{Object of class \code{"matrix"}: 
-    matrix containing the ploidity for all chromosomes and all samples}
+    \item{\code{zygosity}:}{Object of class \code{"matrix"}: 
+    matrix containing the zygosity for all chromosomes and all samples}
     \item{\code{regions}:}{Object of class \code{"GenomicRanges"}: 
     the genomic regions for the coverage matrix}
     \item{\code{parameters}:}{Object of class \code{"list"}: 
@@ -93,10 +93,10 @@ regions, and optionally CNV information.
     extracts offset of rpkm scaled background reads}
     \item{getWindowSize}{\code{signature(object = "qseaSet")}: 
     returns the window size of the object}
-    \item{getPloidity}{\code{signature(object = "qseaSet")}: 
-    returns the ploidity matrix of the object}
-    \item{setPloidity}{\code{signature(object = "qseaSet", ploidityMatrix)}: 
-    sets the ploidity matrix, and resets CNV}
+    \item{getZyosity}{\code{signature(object = "qseaSet")}: 
+    returns the zygosity matrix of the object}
+    \item{setZygosity}{\code{signature(object = "qseaSet", zygosityMatrix)}: 
+    sets the zygosity matrix, and resets CNV}
     }
 }
 \author{Matthias Lienhard}

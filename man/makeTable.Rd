@@ -9,7 +9,8 @@
 }
 \usage{
 makeTable(qs,glm,norm_methods="counts",samples,groupMeans, keep, ROIs,
-    annotation, minPvalSummarize, CNV=FALSE, verbose=TRUE, minEnrichment=3)
+    annotation, minPvalSummarize, CNV=FALSE, verbose=TRUE, minEnrichment=3,
+    chunksize=1e5)
 }
 \arguments{
 \item{qs}{a qseaSet object (mandatory)}
@@ -48,6 +49,11 @@ makeTable(qs,glm,norm_methods="counts",samples,groupMeans, keep, ROIs,
     for transformation to absolute methylation level, 
     you can specify the minimal number of expected reads for a fully 
     methylated window. This avoids inaccurate estimates, due to low enrichment.
+}
+\item{chunksize}{
+    For efficient memory usage, the table is built up in chunks. 
+    With this parameter, the maximum number of windows processed 
+    in one chunk is specified.     
 }
 }
 \details{
