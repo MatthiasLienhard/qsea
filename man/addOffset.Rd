@@ -30,10 +30,13 @@ Mathias Lienhard
 \seealso{addPatternDensity, getOffset}
 
 \examples{
+#simulate data with varing background fractions
 qs=getExampleQseaSet(expSamplingDepth=5e4, repl=5,bgfraction=seq(0,.8,.2))
+#estimate the background in simulated data
 addOffset(qs, "CpG", maxPatternDensity=0.7)
-getOffset(qs, ,"fraction") #estimated fraction of total reads
-getOffset(qs, ,"rpw") #offset reads per window
+#return the background on different scales
+getOffset(qs, scale="fraction") #estimated fraction of total reads
+getOffset(qs, scale="rpw") #average background reads per CNV free window
 
 }
 

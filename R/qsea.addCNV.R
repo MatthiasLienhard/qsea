@@ -4,7 +4,7 @@ findCNV<-function(sampleTable=NULL,BSgenome,chr.select=NULL,
         paired=FALSE, mu =log2(c(1/2, 2/3, 1, 3/2,2,3)), window_size=1000000, 
         normal_idx=NULL, plot_dir=NULL, MeDIP=FALSE,zygosity=NA,
         parallel=FALSE){
-    checkSamples(sampleTable)
+    checkSampleTab(sampleTable)
     CpGrange=NULL    
     if(!MeDIP)
         message("== Analyzing Copy Number Alterations ==")
@@ -160,7 +160,7 @@ addCNV<-function(qs,file_name, window_size=1000000, paired=FALSE,
         mu=mu, normal_idx=normal_idx, plot_dir=plot_dir, MeDIP=MeDIP, 
         zygosity=getZygosity(qs), parallel=parallel)) 
     #todo: add option to use regions of interest, not bsgenome    
-    if(! all(is.na(getOffset(qs) )) )
+    if(! all(is.na(getOffset(qs,scale="rpkm") )) )
         warning("Consider recalculating offset based on new CNV values")
     if("seqPref" %in% names(mcols(getRegions(qs))))
         warning("Consider recalculating sequence ",

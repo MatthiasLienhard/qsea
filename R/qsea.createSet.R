@@ -2,9 +2,9 @@ createQseaSet=function(sampleTable,BSgenome,chr.select,Regions,window_size=250)
 {            
     ## Parameter Check
     facI=sapply(sampleTable, is.factor)
-    sampleTable[,facI] = lapply(sampleTable[,facI], as.character)
+    sampleTable[,facI] = sapply(sampleTable[,facI, drop=FALSE], as.character)
     rownames(sampleTable)=sampleTable$sample_name
-    checkSamples(sampleTable)
+    checkSampleTab(sampleTable)
     #must have: regions or bsgenome
     if( missing(BSgenome) && (missing(Regions) || class(Regions)!="GRanges" ) )
         stop("Must specify a BSgenome library or a GRanges \"Regions\" object.")
@@ -87,7 +87,7 @@ addSeqPref<-function(qs, seqPref,file_name, fragment_length, paired=FALSE,
         seqPref=seqPref$seqPref
     }
     qs=addRegionsFeature(qs, "seqPref",seqPref)
-    if(! all(is.na(getOffset(qs) ) ))
+    if(! all(is.na(getOffset(qs,scale="rpkm") ) ))
         warning("Consider recalculating offset based ",
                 "on new sequence preference")
     return(qs)
@@ -130,7 +130,7 @@ addPatternDensity<-function(qs, pattern,name, fragment_length, fragment_sd,
             pattern=pattern,BSgenome=BSgenome, fragment_length=fragment_length, 
             fragment_sd=fragment_sd, fixed=fixed) 
     }
-    #if(! all(is.na(getOffset(qs) ) ))
+    #if(! all(is.na(getOffset(qs,scale="rpkm") ) ))
     #    warning("Consider recalculating offset based on new pattern density")
     if(missing(name)){
         stop("please provide a name for the pattern")
@@ -305,7 +305,7 @@ addOffset<-function(qs,enrichmentPattern , maxPatternDensity=0.01,offset){
 
 
 
-checkSamples<-function(sampleTable){
+checkSampleTab<-function(sampleTable){
     if(missing(sampleTable) || !is.data.frame(sampleTable))
         stop("Must specify a sample table (data.frame)")
     m=match(c("sample_name", "file_name", "group"),names(sampleTable))

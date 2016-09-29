@@ -5,14 +5,11 @@
 
 getPCA<-function(qs, chr=getChrNames(qs),ROIs, minRowSum=20, keep,norm_method=
         normMethod(logRPM=c("log", "library_size","cnv","preference","psC10")),
-        topVar=1000, samples=seq_len(nrow(getSampleTable(qs)))){
+        topVar=1000, samples=getSampleNames(qs)){
     
     if(is.null(samples))
         samples=    getSampleNames(qs)
-    else if (is.numeric(samples))
-        samples=getSampleNames(qs, samples)
-    if(!all(samples %in% getSampleNames(qs)))
-        stop("unknown samples selected")
+    samples=checkSamples(qs, samples)
     if(missing(keep)) 
         keep=which(rowSums(getCounts(qs)) >= minRowSum )
     else
@@ -146,8 +143,7 @@ plotCNV<-function(qs, dist=c("euclid", "cor")[1], clust_method="complete",
     if(length(getCNV(qs))==0)
         stop("qs does not contain CNV information. Run \"addCNV\" first")
     n=length(samples)
-    if(is.numeric(samples))
-        samples=getSampleNames(qs)[samples]
+    samples=checkSamples(qs, samples)
 
     colF=colorRamp(c("lightgreen","green", "darkgreen", "darkblue", "darkred", 
         "red", "orange"))
@@ -239,34 +235,44 @@ plotCoverage<-function(qs,test_results, chr, start, end, samples,samples2,
         clustmethod="complete", scale=TRUE, steps=TRUE, space=0.05, 
         baselines=TRUE, scale_val, scale_unit=NULL, logFC_pc=.1, cex=1, 
         smooth_width, smooth_function=mean, regions, regions_lwd=1, 
-        regions_col="black", regions_offset, regions_names, regions_dash=0){
+        regions_col, regions_offset, regions_names, regions_dash=.1){
+    if(missing(samples)) samples=getSampleNames(qs)
+    samples=checkSamples(qs,samples)
+   
     if(! missing(regions)){
         if(class(regions)!="list"){
             regions=list(ROIs=regions)
         }
-        if(class(norm_method)=="character"){
-            norm_method=normMethod(norm_method)
-        }
         if(! all(sapply(regions, class)=="GRanges")){
             stop("\"regions\" should be a \"GenomicRanges\" object")
         }
-        if(! missing(regions_lwd) && class(regions_lwd) != "list"){
+        if(missing(regions_lwd)) 
+            regions_lwd=list()
+        if(class(regions_lwd) != "list"){
             regions_lwd=rep(list(regions_lwd), length(regions))
             names(regions_lwd)=names(regions)
         }
-        if(! missing(regions_col) && class(regions_col) != "list"){
+        if(missing(regions_col) )
+            regions_col="black"
+        if (class(regions_col) != "list"){
             regions_col=rep(list(regions_col), length(regions))
             names(regions_col)=names(regions)
         }
-        if(! missing(regions_dash) && class(regions_dash) != "list"){
+        if(missing(regions_dash) )
+            regions_dash=list()
+        if (class(regions_dash) != "list"){
             regions_dash=rep(list(regions_dash), length(regions))
             names(regions_dash)=names(regions)
         }
-        if( missing(regions_offset) || class(regions_offset) != "list"){
+        if( missing(regions_offset))
+            regions_offset=list()        
+        if (class(regions_offset) != "list"){
             regions_offset=rep(list(regions_offset), length(regions))
             names(regions_offset)=names(regions)
         }
-        if( missing(regions_names) || class(regions_names) != "list"){
+        if( missing(regions_names))
+            regions_names=lapply(regions, function(x) names(mcols(x)))
+        if (class(regions_names) != "list"){
             regions_names=rep(list(regions_names), length(regions))
             names(regions_names)=names(regions)
         }
@@ -274,8 +280,11 @@ plotCoverage<-function(qs,test_results, chr, start, end, samples,samples2,
     if(length(col)<length(samples)) 
         col=rep(col,ceiling(length(samples)/length(col) ))
     if(missing(main)) main=paste0(chr,":",start, "-", end)
-    if(!missing(samples2) && length(samples) != length(samples2) ) 
-        stop("length(samples) != length(samples2)")
+    if(!missing(samples2)) {
+        samples2=checkSamples(qs,samples2)
+        if(length(samples) != length(samples2) ) 
+            stop("length(samples) != length(samples2)")
+    }
     if(missing(test_results) && reorder=="minP")
         stop("please specify \"test_results\" for reorder=\"minP\"")
     if(is.numeric(reorder) && (reorder< start || reorder > end))
@@ -283,7 +292,7 @@ plotCoverage<-function(qs,test_results, chr, start, end, samples,samples2,
             "the specified plotting region")
     message("selecting specified Region")
 
-    roi_tab=makeTable(qs=qs, samples=samples, 
+    roi_tab=makeTable(qs=qs, samples=samples, minEnrichment=0,
         ROIs=GRanges(chr, ranges=IRanges(start, end)),norm_methods=norm_method)
     ret=list(regions=roi_tab[,1:4])    
     roi_val=roi_tab[,grep(paste0("_",norm_method), names(roi_tab)), drop=FALSE]
@@ -365,12 +374,12 @@ plotCoverage<-function(qs,test_results, chr, start, end, samples,samples2,
                 regions[[reg_n]][
                     overlapsAny(regions[[reg_n]],
                     GRanges(chr, IRanges(start, end))) ]
-            if(!missing(regions_names[[reg_n]]) && 
+            if(!is.null(regions_names[[reg_n]]) && 
                 length(regions_names[[reg_n]])==1 && 
                 regions_names[[reg_n]] %in% colnames(mcols(regions[[reg_n]])))
                     regions_names[[reg_n]]=
                         mcols(regions[[reg_n]])[,regions_names[[reg_n]]]
-            if(!missing(regions_names[[reg_n]]) && 
+            if(!is.null(regions_names[[reg_n]]) && 
                 length(regions_names[[reg_n]])<length(regions[[reg_n]]) )
                     regions_names[[reg_n]]=
                         rep(regions_names[[reg_n]],
@@ -383,7 +392,7 @@ plotCoverage<-function(qs,test_results, chr, start, end, samples,samples2,
                             length(regions_col[[reg_n]]) ))
             reg_bins[[reg_n]]=
                 disjointBins(regions[[reg_n]], ignore.strand =TRUE)
-            if(missing(regions_offset[[reg_n]])) 
+            if(is.null(regions_offset[[reg_n]])) 
                 regions_offset[[reg_n]]=yoffset*1.5
             if(length(regions[[reg_n]])>0)            
                 ylim[1]=ylim[1]-(max(reg_bins[[reg_n]])+1)*
@@ -441,11 +450,11 @@ plotCoverage<-function(qs,test_results, chr, start, end, samples,samples2,
                     }
     
                 }
-                if(!missing(regions_names[[reg_n]]) )
+                if(!is.null(regions_names[[reg_n]]) )
                     text((start(regions[[reg_n]])+end(regions[[reg_n]]) )/2, 
                         offsum-regions_offset[[reg_n]]*reg_bins[[reg_n]], 
                         regions_names[[reg_n]] , adj=c(.5,1.2),
-                        col=regions_col[[reg_n]])
+                        col=regions_col[[reg_n]], cex=cex)
                 off_roi=(max(reg_bins[[reg_n]])+1)*regions_offset[[reg_n]]
             }else{
                 off_roi=regions_offset[[reg_n]]
@@ -463,6 +472,7 @@ plotEnrichmentProfile<-function(qs,sample, sPoints=seq(0,30,1),
     fitPar=list(lty=2,col="green"),cfPar=list(lty=1),densityPar,meanPar,...){
     if(!hasEnrichment(qs))
         stop("no enrichment analysis found")
+    sample=checkSamples(qs, sample)
     if(missing(sample) || length(sample)!=1 )
         stop("please select one sample")
     plotPar=list(...)
@@ -476,7 +486,7 @@ plotEnrichmentProfile<-function(qs,sample, sPoints=seq(0,30,1),
     cfPar=c(cfPar, 
     plotPar[(! names(plotPar) %in% names(cfPar)) & 
         names(plotPar) %in% recycle ])
-    factors=getEnrichmentFactors(qs, sample)+getOffset(qs,sample)
+    factors=getEnrichmentFactors(qs, sample)+getOffset(qs,sample,scale="rpkm")
     if(is.null(plotPar$ylim))
         maxY=c(maxY,max(factors,na.rm=TRUE))
     if(! missing(densityPar)| ! missing (meanPar)){
@@ -494,7 +504,8 @@ plotEnrichmentProfile<-function(qs,sample, sPoints=seq(0,30,1),
     }
     par=getEnrichmentParameters(qs, sample)
     if(!is.null(par)){        
-        fitted=.sigmF2(sPoints,par[1], par[2], par[3] )+getOffset(qs,sample)
+        fitted=.sigmF2(sPoints,par[1], par[2], par[3] )+
+            getOffset(qs,sample,scale="rpkm")
         maxY=max(c(maxY,fitted))
     }
     if(is.null(plotPar$ylim))
@@ -530,12 +541,13 @@ plotEnrichmentProfile<-function(qs,sample, sPoints=seq(0,30,1),
 plotEPmatrix<-function(qs, sa=getSampleNames(qs),
     nrow=ceiling(sqrt(length(sa))), ncol=ceiling(length(sa)/nrow), ...){
     param=list(...)
+    sa=checkSamples(qs, sa)
     ma=matrix(c(rep(1,ncol),(seq_len((nrow*ncol)))+3,rep(3,ncol)),
         nrow+2,ncol,byrow=TRUE)
     ma=cbind(rep(0,nrow+2),ma, rep(0,nrow+2))
     ma[seq_len(nrow)+1,1]=2
-    wd=c(.05,rep(.9/ncol,ncol),.05)
-    ht=c(.05,rep(.9/nrow,nrow),.05)
+    wd=c(.1,rep(.8/ncol,ncol),.1)
+    ht=c(.1,rep(.8/nrow,nrow),.1)
     par( mar=c(1,1,1,1))
     lo=layout(ma, widths=wd, heights=ht)
     #layout.show(lo)
@@ -549,7 +561,7 @@ plotEPmatrix<-function(qs, sa=getSampleNames(qs),
     i=0
     if(is.null(param$ylim))
         param$ylim=c(0,
-            max(getEnrichmentFactors(qs,sa, minN=10), na.rm=TRUE) )
+            max(getEnrichmentFactors(qs,sa, minN=5), na.rm=TRUE)*1.1 )
     retList=list()
     for(s in sa){
         i=i+1

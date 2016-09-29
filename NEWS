@@ -1,3 +1,12 @@
+Version 0.99.5
+________________________________________________________________________________
+
+New features
+- user level functions now have sample id check
+- more detailed tutorial, including case study
+Bugfixes:
+- makeTable: fixed groupMeans without individual samples
+
 Version 0.99.4
 ________________________________________________________________________________
 
@@ -5,7 +14,6 @@ New functions:
 - multicore support for bam file processing
 - memory and runtime optimizations
 Bugfixes:
-- CNV plot in absence of CNV: TODO!
 - bug in consideration of zygosity of chromosomes
 
 Version 0.99.3

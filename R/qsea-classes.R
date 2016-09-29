@@ -37,8 +37,10 @@ setMethod('show', signature='qseaSet', definition=function(object) {
 setGeneric('getSampleTable', 
         function(object, ...) standardGeneric('getSampleTable'))
 setMethod('getSampleTable', 'qseaSet', 
-        function(object, samples=seq_len(nrow(object@sampleTable))) 
-            object@sampleTable[samples,] )
+        function(object, samples=getSampleNames(object)){
+            samples=checkSamples(object, samples)
+            object@sampleTable[samples,] 
+        })
 
 # short to get sample names
 setGeneric('getSampleNames', 
@@ -51,10 +53,12 @@ setMethod('getSampleNames', 'qseaSet',
 setGeneric('getSampleGroups', function(object,...) 
         standardGeneric('getSampleGroups'))
 setMethod('getSampleGroups', 'qseaSet', 
-        function(object, samples=seq_len(nrow(object@sampleTable)), 
-                group="group") 
-                split(object@sampleTable$sample_name[samples], 
-                f=object@sampleTable[samples,group]))
+        function(object, samples=getSampleNames(object), 
+                group="group"){
+            samples=checkSamples(object, samples)
+            split(object@sampleTable[samples,"sample_name"],
+                f=object@sampleTable[samples,group])
+        })
 
 # chr names
 setGeneric('getChrNames', function(object) 
@@ -114,9 +118,11 @@ setMethod('getEnrichmentDensity', 'qseaSet', function(object)
 setGeneric('getEnrichmentFactors', function(object,...) 
     standardGeneric('getEnrichmentFactors'))
 setMethod('getEnrichmentFactors', 'qseaSet', 
-    function(object, samples=getSampleNames(object), minN=0) 
+    function(object, samples=getSampleNames(object), minN=0) {
+        samples=checkSamples(object, samples)
         object@enrichment$factors[object@enrichment$n >= minN,
-            samples,drop=FALSE] )
+            samples,drop=FALSE] 
+    })
 
 setGeneric('getEnrichmentParameters', function(object,...) 
     standardGeneric('getEnrichmentParameters'))
@@ -150,6 +156,7 @@ setGeneric('getLibSize',
     function(object, ...) standardGeneric('getLibSize'))
 setMethod('getLibSize', 'qseaSet', 
     function(object,samples=getSampleNames(object),normalized=TRUE) {
+        samples=checkSamples(object, samples)
         if (normalized)
             factors=object@libraries[["file_name"]][samples,"library_factor"]
         else
@@ -173,7 +180,8 @@ setMethod('getLibrary', 'qseaSet', function(object, colName)
 # Offset
 setGeneric('getOffset', function(object, ...) standardGeneric('getOffset'))
 setMethod('getOffset', 'qseaSet', 
-    function(object,samples=seq_len(nrow(object@sampleTable)), scale="rpkm") {
+    function(object,samples=getSampleNames(object), scale="fraction") {
+        samples=checkSamples(object, samples)
         if(scale=="rpkm"){
             object@libraries[["file_name"]][samples, "offset"]
         }else if(scale=="rpw"){#reads per "normal" window
@@ -187,7 +195,21 @@ setMethod('getOffset', 'qseaSet',
         }else stop("unknown scale parameter. Use one of rpkm, rpw or fraction")
     })
 
-
+checkSamples<-function(qs,sampleIdx){
+    if(is.null(sampleIdx))
+        return(NULL)
+    allSamples=getSampleNames(qs)
+    
+    if(is.numeric(sampleIdx))
+        sampleIdx=allSamples[sampleIdx]
+    if(any(is.na(sampleIdx)))
+        stop("sample ids contain NAs: ",paste(sampleIdx, collapse=", "))
+    if(all(sampleIdx %in% allSamples))
+        return(sampleIdx)
+    else
+        stop("unknown samples: ",
+            paste(sampleIdx[! sampleIdx %in% allSamples], collapse=", "))
+}
 normMethod<-function(methods=NULL,...){
     ownMethods=list(...)
     #check user defined methods    
@@ -247,8 +269,10 @@ setGeneric('hasCNV', function(object) standardGeneric('hasCNV'))
 setMethod('hasCNV', 'qseaSet', function(object) length(object@cnv)>0)
 
 setGeneric('getCNV', function(object, ...) standardGeneric('getCNV'))
-setMethod('getCNV', 'qseaSet', function(object,samples=getSampleNames(object) )
-    if(hasCNV(object)) return (object@cnv[,samples]) else return(NULL) )
+setMethod('getCNV', 'qseaSet', function(object,samples=getSampleNames(object)){
+    samples=checkSamples(object, samples)
+    if(hasCNV(object)) return (object@cnv[,samples]) else return(NULL) 
+})
 
 setGeneric('setCNV', function(object, ...) standardGeneric('setCNV'))
 setMethod('setCNV', 'qseaSet', function(object, cnv){
@@ -264,6 +288,7 @@ setMethod('setCNV', 'qseaSet', function(object, cnv){
 setGeneric('getCounts', function(object,...) 
     standardGeneric('getCounts'))
 setMethod('getCounts', 'qseaSet', function(object,samples=NULL, windows=NULL ){
+        samples=checkSamples(object, samples)
         if(!is.null(samples) && !is.null(windows)) 
             return(object@count_matrix[windows,samples, drop=FALSE])
         if(!is.null(samples)) 

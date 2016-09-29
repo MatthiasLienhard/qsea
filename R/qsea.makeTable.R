@@ -1,16 +1,20 @@
 makeTable<-function(qs,glm,norm_methods="counts",samples,groupMeans, keep, ROIs,
     annotation, minPvalSummarize, CNV=FALSE, verbose=TRUE, minEnrichment=3, 
     chunksize=1e5){
+     if(missing(qs) || class(qs) != "qseaSet" )
+        stop("please specify a qseaSet\n")    
     if(missing(samples))
         samples=NULL
+    samples=checkSamples(qs, samples)
     if(missing(groupMeans))
         groupMeans=NULL
-    if(missing(qs) || class(qs) != "qseaSet" )
-        stop("please specify a qseaSet\n")
-    if(is.character(samples)) samples=match(samples, getSampleNames(qs))
-    if(suppressWarnings(any(is.na(samples)))) 
-        stop("samples contains unknown samples or NA")
-    if(CNV && length(getCNV(qs))==0 ) 
+    else{
+        if(class(groupMeans) != "list")
+            stop("\"groupMeans\" must be a list of sample ids")
+        groupMeans=lapply(groupMeans, checkSamples, qs=qs)
+    }
+
+    if(CNV && hasCNV(qs)==FALSE ) 
         stop("qs does not contain CNV information. Run addCNV first")
     #check norm methods
     if(class(norm_methods)=="character")
@@ -147,8 +151,7 @@ makeTable<-function(qs,glm,norm_methods="counts",samples,groupMeans, keep, ROIs,
                     mcols(annotation[[reg]][ol[, 2]])[,,drop=TRUE])
             else
                 ol$anno_names=do.call(mapply,
-                    c(as.list(mcols(annotation[[reg]][ol[,2]])),FUN=paste,
-                    MoreArgs = list(sep="_")))
+                    c(as.list(mcols(annotation[[reg]][ol[,2]])),FUN=paste))
                 #ol$anno_names=apply(
                 #   X=as.data.frame(mcols(annotation[[reg]][ol[,2]])),
                 #   MARGIN=1,FUN=paste,collapse="_")
@@ -156,7 +159,7 @@ makeTable<-function(qs,glm,norm_methods="counts",samples,groupMeans, keep, ROIs,
 
             ol=ol[!duplicated(ol[,c(1,3)]),]
             anno_names=sapply(split(x=ol$anno_names, f=ol$queryHits),
-                paste,collapse=",")
+                paste,collapse=", ")
             anno_tab[as.integer(names(anno_names)),reg]=anno_names
         }
     }else

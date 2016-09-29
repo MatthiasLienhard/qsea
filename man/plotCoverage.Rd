@@ -10,9 +10,9 @@ in a genome-browser-like fashion}
 norm_method="nrpkm", yoffset, xlab="Position", 
 ylab="MeDIP seq", col="black", main, reorder="non", indicate_reorder=TRUE, 
 distfun=dist, clustmethod="complete", scale=TRUE, steps=TRUE, space=0.05, 
-baselines=TRUE, scale_val, scale_unit, logFC_pc=.1, cex=1, smooth_width, 
-smooth_function=mean, regions, regions_lwd=1, regions_col="black", 
-regions_offset, regions_names, regions_dash=0)
+baselines=TRUE, scale_val, scale_unit=NULL, logFC_pc=.1, cex=1, smooth_width, 
+smooth_function=mean, regions, regions_lwd=1, regions_col, 
+regions_offset, regions_names, regions_dash=0.1)
 }
 \arguments{
 \item{qs}{a qseaSet object}

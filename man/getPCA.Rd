@@ -10,7 +10,7 @@ for exploratory data analysis.
 getPCA(qs, chr= getChrNames(qs),ROIs, minRowSum=20, keep , 
     norm_method=normMethod(logRPM = 
     c("log", "library_size", "cnv", "preference", "psC10")), topVar=1000,
-    samples=seq_len(nrow(getSampleTable(qs))))
+    samples=getSampleNames(qs))
 }
 \arguments{
 \item{qs}{DIPSset (mandatory)}
@@ -22,7 +22,7 @@ getPCA(qs, chr= getChrNames(qs),ROIs, minRowSum=20, keep ,
 \item{norm_method}{name of predefined normalization (e.g. "beta"), 
         or user defined normalization by calling normMethod() function }
 \item{topVar}{only the top variable windows are considered}
-\item{samples}{indices of samples to be considered}
+\item{samples}{names of samples to be considered}
 
 }
 \details{

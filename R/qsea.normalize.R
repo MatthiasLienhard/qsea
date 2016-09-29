@@ -63,14 +63,14 @@ getNormalizedValues<-function(qs, methods, windows=NULL, samples=NULL,
         maxVal=getNumPar("maxCut",methods[[m]])    
         qPer=getNumPar("q",methods[[m]])
         values=raw_values+pseudocount
-        names(values)=paste(samples,m,sep="_")
+        names(values)=paste(allSampleIdx,m,sep="_")
         nm=getNormMatrix(qs, methods[[m]],wd,allSampleIdx)
         norm=nm$factors
         offset=nm$offset
         rm(nm)
         #offset=matrix(0, nrow(values),ncol(values))        
         #if("offset" %in% methods[[m]]){
-        #    offset=t(t(norm)*getOffset(qs, allSampleIdx))
+        #    offset=t(t(norm)*getOffset(qs, allSampleIdx,scale="rpkm"))
         #}        
 
         #transformation to absolute methylation
@@ -92,9 +92,9 @@ getNormalizedValues<-function(qs, methods, windows=NULL, samples=NULL,
             #            sPar[samples[i],"b"],sPar[samples[i],"c"])+pseudocount
             #}
             norm=norm*mapply(.sigmF2, MoreArgs=list(x=cf),
-                a=sPar[samples,"a"],
-                b=sPar[samples,"b"],
-                c=sPar[samples,"c"], USE.NAMES = FALSE)+pseudocount
+                a=sPar[allSampleIdx,"a"],
+                b=sPar[allSampleIdx,"b"],
+                c=sPar[allSampleIdx,"c"], USE.NAMES = FALSE)+pseudocount
 
             if(minEnrichment>0)
                 norm[norm<minEnrichment]=NA 
@@ -224,8 +224,8 @@ getNormMatrix<-function(qs, methods,windows,samples){
     normFM[normFM<=0]=NA
 
    if("offset" %in% methods){#this is quite inefficient
-        #offset=t(getOffset(qs, samples)*t(normFM))
-        offset=getOffset(qs, samples)
+        #offset=t(getOffset(qs, samples,scale="rpkm")*t(normFM))
+        offset=getOffset(qs, samples,scale="rpkm")
     }else{
         #offset=sparseMatrix(x=0,i=1,j=1, w=length(windows),ncol=length(samples))
         offset=rep(0,length(samples))
@@ -453,11 +453,11 @@ estimateOffset<-function(qs,enrichmentPattern, maxPatternDensity=0.01){
     if(length(bg)<100) 
         stop("not enough windows with enrichment pattern density of at most ", 
         maxPatternDensity, 
-        " per fragment found to estimate background read distribution")
+        " per fragment \nfound to estimate background read distribution")
     message(round(fraction*100,3),
         "% of the windows have enrichment pattern density of at most ", 
         maxPatternDensity, 
-        " per fragment and are used for background reads estimation")
+        " per fragment \nand are used for background reads estimation")
     bgCounts=getNormalizedValues(qs,methods=normMethod("nrpkm"), 
         windows=bg, samples=getSampleNames(qs))
     #upperQ=apply(bgCounts, 2,quantile,p=.5,.75) #remove stangly high values?

@@ -16,7 +16,10 @@ vignette: >
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}  
 output: 
-  BiocStyle::html_document
+  BiocStyle::html_document:   
+    fig_width: 7
+    fig_height: 6
+    fig_caption: true
 bibliography: 
   qseaTutorial.bib
 ---
@@ -27,28 +30,29 @@ a statistical framework for modeling and transformation of MeDIP-seq enrichment
 data to absolute methylation levels similar to BS-sequencing read-outs. 
 Furthermore, QSEA comprises functionality for data normalization that accounts 
 for the effect of CNVs on the read-counts as well as for the detection and 
-annotation of differentially methylated regions (DMRs).
-The transformation is based on a Bayesian model, that explicitly take
- into account the signal to noise ratios of the experiments.
-This transformation takes the sample-wise enrichment profile into 
-account, which is calibrated with or without additional data. 
+annotation of differently methylated regions (DMRs).
+The transformation is based on a Bayesian model, that explicitly takes
+background reads and CpG density dependent enrichment profiles
+of the experiments into account.
 
 # Installation
 
 
 To install the QSEA package in your R environment, start R and enter:
 
-```{r, eval=FALSE}
+```{r , eval=FALSE}
 source("https://bioconductor.org/biocLite.R")
 biocLite("qsea")
 
 ```
 
+<a name="hg19install"></a>
 Next, it is necessary to have the genome of interest
 available in your R environment. 
-As soon as you have the `r Biocpkg("BSgenome")` package installed and the library loaded using 
+As soon as you have the `r Biocpkg("BSgenome")` package installed and the 
+library loaded using 
 
-```{r, eval=FALSE}
+```{r , eval=FALSE}
 biocLite("BSgenome")
 library("BSgenome")
 ```
@@ -81,32 +85,55 @@ available in the `r Biocpkg("MEDIPSData")` package which can be installed by typ
 ```{r, eval=FALSE}
 biocLite("MEDIPSData")
 ```
-# Example
-First, the qsea package has to be loaded. 
+# QSEA workflow
+Here, we show the most important steps of the QSEA work-flow for the analysis of
+MeDIP seq data. We assume that the reads have been aligned to reference genome hg19
+and are on hand in .bam format. 
 
-```{r, message=FALSE}
+## Preparation and import of short reads
+
+
+In order to describe the samples, we must provide
+a data.frame object with at least 3 columns:
+
+* sample_name: unique names of the samples, 
+* file_name:  path to the alignment files of MeDIP seq, typically bam files
+* group: assignment of samples to groups, such as "treatment" and "control".
+
+Further columns describing the samples are optional, and can be considered 
+in downstream analysis:
+
+* sex: if provided, the number of sex chromosomes is taken into account. 
+* input files: If sequencing of the input libraries (before enrichment) are 
+  available, this data can be used in the addCNV function, by specifying the respective column.
+* alternative group arrangements or clinical data can be used in the statistical 
+    test, or when creating result tables. 
+
+To demonstrate the QSEA analysis steps, 
+we use data available in the  `r Biocpkg("MEDIPSData")`  package. 
+This package contains aligned MeDIP seq data for chromosomes 20, 21 and 22 of 3 NSCLC 
+tumor samples and adjacent normal tissue. 
+
+```{r, results='asis'}
+data(samplesNSCLC, package="MEDIPSData")
+knitr::kable(samples_NSCLC)
+path=system.file("extdata", package="MEDIPSData")
+samples_NSCLC$file_name=paste0(path,"/",samples_NSCLC$file_name )
+```
+
+
+Now, the QSEA package has to be loaded. 
+
+```{r lib_qsea, message=FALSE}
 library(qsea)
 ```
 
-In the given example, we mapped the short reads 
-against the human genome build hg19. 
-Therefore, we load the pre-installed (see chapter 3) hg19 library:
 
-```{r, message=FALSE}
+To access information of the reference genome, we load the pre-installed 
+(see chapter [Installation](#hg19install)) hg19 library:
+
+```{r lib_BSgenome, message=FALSE}
 library(BSgenome.Hsapiens.UCSC.hg19)
-```
-Next, we need to crate a sample table, containing the names of the 
-samples, the file path to the alignment files, and a group annotation.
-
-```{r, results='asis'}
-bam_hESCs_1 = system.file("extdata", 
-    "hESCs.MeDIP.Rep1.chr22.bam", package="MEDIPSData")
-bam_hESCs_2 = system.file("extdata", 
-    "hESCs.MeDIP.Rep2.chr22.bam", package="MEDIPSData")
-sample_table=data.frame(sample_name=paste0("hESCs_", 1:2), 
-file_name=c(bam_hESCs_1,bam_hESCs_2), 
-group=rep("hESC",2), stringsAsFactors=FALSE)
-knitr::kable(sample_table)
 ```
 
 All relevant information of the enrichment experiment, including 
@@ -123,42 +150,108 @@ that takes the following parameters:
 * Regions: If specified, only data in the specified 
   regions will be processed.
 
-```{r, collapse=TRUE}
-qseaSet=createQseaSet(sampleTable=sample_table, 
+```{r createSet, collapse=TRUE}
+qseaSet=createQseaSet(sampleTable=samples_NSCLC, 
         BSgenome="BSgenome.Hsapiens.UCSC.hg19", 
-        chr.select="chr22", 
+        chr.select=paste0("chr", 20:22), 
         window_size=500)
 qseaSet
 ```
 
-We could now estimate CNVs (addCNV) from sequencing data of the input library. 
-However, for this example, there is no such data. 
-
 We now read the alignment files and compute the MeDIP coverage for each window.
+For this step, we have to specify the following parameters:
 
-```{r, collapse=TRUE}
-qseaSet=addCoverage(qseaSet, fragment_length=200, uniq=TRUE, paired=FALSE)
+* qs: the QSEA set, as prepared in the step above
+* uniquePos: if set, fragments at the exact same start and end position are
+    considered to be PCR duplicates and replaced by one representative
+* minMapQual: minimum mapping quality for a read to be considered.
+    Commonly, a mapping quality of 0 reflects ambigious alignments in 
+    most alignment tools.
+* paired: if set, reads are considered to be paired end. In this case, exact
+    fragment sizes are imported.
+* fragment_size: for single end sequencing data (paired=FALSE), this parameter
+    provides the fragment size.
+
+```{r addCoverage, eval=FALSE}
+qseaSet=addCoverage(qseaSet, uniquePos=TRUE, paired=TRUE)
+```
+##Normalization
+
+###Copy Number Variation
+The QSEA model can consider Copy Number Variation (CNV), and account for their 
+influence on MeDIP read density. 
+CNV can either be computed externally and imported into QSEA, 
+or estimated directly within QSEA. 
+QSEA internally uses the bioconductor package `r Biocpkg("HMMcopy")`  
+to estimate CNV from sequencing data of the input library, 
+or from the MeDIP library (parameter "MeDIP"=TRUE).
+In the latter case, only fragments that do not contain CpG dinucleotides are considered.
+
+Externally computed CNVs can be imported with the addCNV function 
+by specifying the "cnv" parameter:
+
+* cnv: externally computed CNVs as a GRange object, containing a metadata
+    column with log2 CNV values (relative to normal Copy Number).
+    for each sample in the analysis. 
+    The names of the columns must match the sample names, as specified in the sample table. 
+
+If no "cnv" object is provided, the following parameters control the internal 
+CNV analysis:
+
+* file_name: specify the column in the sample table, containing the sequencing
+    alignment files, to be used for the CNV analysis. 
+* window_size: window size used for the CNV analysis. 
+* paired, "fragment_size": see addCoverage step above
+* mu: Suggested median for copy numbers in states, see HMMcopy::HMMsegment
+* normal_idx: samples, that presumably do not have copy number variations.
+    By default,  samples grouped as "normal" or "control" in the sample table 
+    are selected, 
+* MeDIP: Estimate CNV from CpG methylation enriched sequencing data 
+    (e.g. MeDIP seq) 
+* plot_dir: optionally, chromosome wise CNV plots are generated in the specified
+    directory
+
+
+```{r addCNV, eval=FALSE}
+qseaSet=addCNV(qseaSet, file_name="file_name",window_size=2e6, 
+        paired=TRUE, parallel=FALSE, MeDIP=TRUE)
 ```
 
+Note, that CNV estimation will benefit from analysing the whole genome. 
+For this step, limiting the estimation to single chromosomes is not recommendable
+in general. 
+
+###Scaling Library Factor
 QSEA accounts for differences in sequencing depth and library 
 composition by estimating the effective library size 
 for each sample using the trimmed mean of m-values approach 
 [TMM, @robinson2010].
+Alternatively, QSEA can import user provided normalization factors, using
+the "factors" parameter in addLibraryFactors. 
 
-```{r, collapse=TRUE}
+```{r addLibraryFactors, eval=FALSE}
 qseaSet=addLibraryFactors(qseaSet)
 ```
+###Estimating model parameters for transformation to absolute methylation values
 
 As MeDIP seq read coverage is dependent on the CpG density of the fragment,
 we estimate the average CpG density per fragment for each genomic window.
 
-```{r, collapse=TRUE}
-qseaSet=addPatternDensity(qseaSet, "CG", name="CpG",fragment_sd=0)
+
+```{r addPatternDensity, eval=FALSE}
+qseaSet=addPatternDensity(qseaSet, "CG", name="CpG")
 ```
 
 From the regions without CpGs we can estimate the coverage 
 offset from background reads.
-```{r, collapse=TRUE}
+
+```{r loadDataSet, include=FALSE}
+#load prepared dataset
+data(NSCLC_dataset, package="MEDIPSData")
+```
+
+
+```{r addOffset, tidy=TRUE, collapse=TRUE}
 qseaSet=addOffset(qseaSet, enrichmentPattern="CpG")
 ```
 
@@ -168,35 +261,222 @@ The parameters for this model can be estimated using the
 addEnrichmentParameters() function. 
 For this task we need to provide known values for a subset of windows, 
 for example gained by validation experiments or from other studies.
-Since such information is not available for the analyzed data set, 
-we assume high methylation at regions with low CpG density, 
-and linearly decreasing average methylation levels for higher CpG density. 
+QSEA then fits a sigmoidal function to these values, in order to smooth 
+and extrapolate the provided values. 
+The enrichment parameters, together with the estimated offset of background
+reads are applied in the transformation to absolute methylation values. 
 
-```{r, collapse=TRUE}
-wd=which(getRegions(qseaSet)$CpG_density>1 &
-    getRegions(qseaSet)$CpG_density<15)
-signal=(15-getRegions(qseaSet)$CpG_density[wd])*.55/15+.25
-signal=matrix(signal,nrow=length(signal),ncol=length(getSampleNames(qseaSet)))
+For the example dataset, we can make use of methylation data from the
+TCGA lung adenocarcinoma [LUAD,@TCGA_LUAD ] and squamous cell carcinoma 
+[LUSC,@TCGA_LUSC] studies. For this purpose, DNA methylation datasets 
+have been downloaded from <https://gdc.cancer.gov/>, and averaged in 500 base
+windows, and filtered for highly methylated windows across all samples. 
+The relevant chromosomes of this data is contained in the "tcga_lung" object 
+of the `r Biocpkg("MEDIPSData")` package. 
+
+```{r addEnrichmentParametersTCGA, collapse=TRUE}
+data(tcga_luad_lusc_450kmeth, package="MEDIPSData")
+
+wd=findOverlaps(tcga_luad_lusc_450kmeth, getRegions(qseaSet), select="first")
+signal=as.matrix(mcols(tcga_luad_lusc_450kmeth)[,rep(1:2,3)])
 qseaSet=addEnrichmentParameters(qseaSet, pattern_name="CpG", 
     windowIdx=wd, signal=signal)
 ```
 
+In case such information is not available for the analyzed data set, 
+the enrichment model can be calibrated using rough estimates 
+("blind calibration"). 
+For instance, in adult tissue samples, we can assume high methylation at 
+regions with low CpG density, and linearly decreasing average methylation 
+levels for higher CpG density. 
+However, for different types of samples, such as cell lines or embryonic cells, 
+these assumptions would be a poor fit and lead to false results. 
 
-We can now create an output table with raw counts 
+```{r addEnrichmentParameters_blind, collapse=TRUE}
+wd=which(getRegions(qseaSet)$CpG_density>1 &
+    getRegions(qseaSet)$CpG_density<15)
+signal=(15-getRegions(qseaSet)$CpG_density[wd])*.55/15+.25
+qseaSet_blind=addEnrichmentParameters(qseaSet, pattern_name="CpG", 
+    windowIdx=wd, signal=signal)
+```
+
+##Quality control 
+In order to review the quality of the MeDIP enrichment and the model assumptions, 
+made in the previous steps, we can check the model parameters estimated by QSEA, 
+which describe the signal to noise ratio, and the enrichment efficiency.
+At first, we check the estimated fraction of background reads:
+```{r getOffset, collapse=TRUE}
+getOffset(qseaSet, scale="fraction")
+```
+This reveals, that between 9% and 13% of the fragments are due to the 
+background rather than enrichment. High values (e.g. > 0.9) would 
+indicate a lack of enrichment efficiency.
+
+To examine the the sample-wise CpG density dependent enrichment profiles, 
+as estimated by addEnrichmentParameters(), QSEA provides the plotEPmatrix() 
+function:
+```{r plotEPmatrix, results='hide',collapse=TRUE, fig.width=10,fig.height=7,fig.cap='CpG density dependent Enrichment Profiles'}
+plotEPmatrix(qseaSet)
+```
+The average enrichment, observed in the provided "signal", is depicted in
+black, and the fitted sigmoidal function in green. Samples with flat profiles 
+might indicate low enrichment efficiency, 
+or poor agreement with the calibration data. 
+
+##Exploratory Analysis
+
+In order to analyze the main characteristics of the data, and to visualize 
+the relationships between the samples, QSEA provides a set of tools for 
+exploratory data analysis. 
+
+The plotCNV() function provides a genome wide overview on CNV.
+Deletations are depicted in green shades, while amplifications are green, and
+normal copy numbers are blue. Each sample is represented as a row, 
+which is ordered based on the similarity of CNV profiles.
+```{r plotCNV, collapse=TRUE,fig.width=10,fig.height=7,fig.cap="Overview representation of Copy Number Variation"}
+plotCNV(qseaSet)
+```
+This plot shows, that one half of chr 20 is amplified in sample 2T, while a large part of 
+chr21 is deleted in sample 1T. The other samples, including 3T, have normal copy numbers. 
+Regions without information (e.g. that are masked in the reference) are represented in gray. 
+
+To explore the relationship between samples, 
+a principal component plot can be intuitive. 
+By default, principal component analysis (PCA) is computed based on 
+log transformed normalized count values. 
+In order to use the transformation to absolute methylation values, the 
+"norm_method" parameter is set to "beta". 
+To get an impression of the effects on different levels of annotation, 
+the PCA can be restricted on regions
+of interest, provided as a GRanges object. To demonstrate this feature, we
+import an annotation object, containing different UCSC annotation tracks. 
+To obtain CpG Island promoter regions, we intersect CpG Islands with 
+transcription start sites(TSS).
+
+```{r, collapse=TRUE}
+data(annotation, package="MEDIPSData")
+CGIprom=intersect(ROIs[["CpG Island"]], ROIs[["TSS"]],ignore.strand=TRUE)
+pca_cgi=getPCA(qseaSet, norm_method="beta", ROIs=CGIprom)
+col=rep(c("red", "green"), 3)
+plotPCA(pca_cgi, bg=col, main="PCA plot based on CpG Island Promoters")
+```
+
+In this plot, we can  that DNA methylation is different between 
+Tumor and Normal samples, and that the Tumor samples are a heterogeneous group, 
+while the Normal samples cluster tightly together. 
+
+
+##Differential Methylation Analysis
+Differential Methylation Analysis in QSEA is based on generalized linear models
+(GLMs), and a likelihood ratio test, similar to tests performed to detect
+deferentially expressed genes, implemented in  `r Biocpkg("DESeq2")` or
+`r Biocpkg("edgeR")`.
+Briefly, we model read counts with a negative binomial distribution with mean
+and dispersion parameter. For each window, we fit a GLM with logarithmic link 
+function. 
+For significance testing, we fit a reduced model, and compare the
+likelihood ratio (LR) of the models to a Chi-squared distribution.
+These steps are implemented in the following functions:
+
+```{r, eval=FALSE}
+design=model.matrix(~group, getSampleTable(qseaSet) )
+qseaGLM=fitNBglm(qseaSet, design, norm_method="beta")
+qseaGLM=addContrast(qseaSet,qseaGLM, coef=2, name="TvN" )
+```
+
+At fist, the model matrix ("design") for the full model is defined, 
+using the group column of the sample table. The model contains two coeficients:
+an intercept, and a dummy variable, distinguishing between "Normal" and "Tumor". 
+"fitNBglm" simultaneously fits the dispersion parameters and the model coefficients
+for the full model. In the next step, "addContrast" fits a model, reduced by the 2nd
+component (thus, only intercept remains). In addition, the likelihood ratio test
+is performed. All results are stored in a QSEA GLM object. Note, that one GLM object can 
+contain several contrasts and test results (for more complex experimental designs). 
+
+
+##Annotating, Exploring and Exporting Results
+
+
+We can now create a results table with raw counts 
 (_reads) estimated % methylation values (_beta), 
-as well as an 95% credibility interval [_betaLB, _betaUB] q
-for the estimates for all windows within a region of interest, 
-in this case a particular CpG Island:
+as well as an 95% credibility interval [_betaLB, _betaUB] 
+for the estimates for all deferentially methylated windows.
+"isSignificant" selects windows below the defined significance threshold.
+
 
 ```{r, collapse=TRUE}
 library(GenomicRanges)
-cgi=GRanges("chr22", IRanges(17081987, 17083343))
+sig=isSignificant(qseaGLM, fdr_th=.01)
+
 result=makeTable(qseaSet, 
-    samples=getSampleNames(qseaSet), 
-    ROIs=cgi, 
-    norm_method=c("reads", "beta", "betaLB", "betaUB"))
-knitr::kable(result)
+    glm=qseaGLM, 
+    groupMeans=getSampleGroups(qseaSet), 
+    keep=sig, 
+    annotation=ROIs, 
+    norm_method="beta")
+knitr::kable(head(result))
 ```
+
+The makeTable function is implemented quite generically, and provides the 
+following options, to specify the regions and the content of the table:
+
+* norm_methods: a vector of normalization method names. Valid names include
+** counts: raw (un-normalized) read counts. 
+** nrpkm: CNV normalized reads per kilobase (genomic window) per million mapped reads. 
+** beta: transformation to absolute methylation. 
+* samples: sample names to be included in the table as individual columns. 
+* groupMeans: named list of sample names, that are summarized as group averages. 
+* glm: optional argument, to include test statistics in the result table.
+* keep: vector of window ids, as obtained by isSignificant()
+* ROIs: GRange object defining regions of interest, to which the result table will be restricted.
+* annotation: A named list of GRange objects, containing genomic annotations.
+
+To assess the enrichment of differentially methylated regions within 
+genomic annotations, the regionsStats() functions 
+```{r, results='asis', collapse=TRUE}
+sigList=list(gain=isSignificant(qseaGLM, fdr_th=.1,direction="gain"),
+             loss=isSignificant(qseaGLM, fdr_th=.1,direction="loss"))
+roi_stats=regionStats(qseaSet, subsets=sigList, ROIs=ROIs)
+knitr::kable(roi_stats)
+roi_stats_rel=roi_stats[,-1]/roi_stats[,1]
+x=barplot(t(roi_stats_rel)*100,ylab="fraction of ROIs[%]",
+    names.arg=rep("", length(ROIs)+1),  beside=TRUE, legend=TRUE, 
+    las=2, args.legend=list(x="topleft"), 
+    main="Feature enrichment Tumor vs Normal DNA methylation")
+text(x=x[2,],y=-.15,labels=rownames(roi_stats_rel), xpd=TRUE, srt=30, cex=1, adj=c(1,0))
+
+```
+As expected for tumor samples, hypomethylated regions are more
+frequent genome wide, while CpG islands are enriched for hypermethylation. 
+
+If we are interested in a particular genomic region, it can be depicted
+ in a genome browser like manner as follows:
+(find a more interesting example, add annotations ...)
+```{r, collapse=TRUE}
+plotCoverage(qseaSet, samples=getSampleNames(qseaSet), 
+    chr="chr20", start=38076001, end=38090000, norm_method="beta", 
+    col=rep(c("red", "green"), 3), yoffset=1,space=.1, reorder="clust", 
+    regions=ROIs["TFBS"],regions_offset=.5, cex=.7 ) 
+```
+
+
+
+#Parallelization
+
+A large part of the run time is required for processing the alignment files.
+These steps can be parallelized using the `r Biocpkg("BiocParallel")` package:
+
+```{r, eval=FALSE}
+library("BiocParallel")
+register(MulticoreParam(workers=3))
+qseaSet=addCoverage(qseaSet, uniquePos=TRUE, paired=TRUE, parallel=TRUE)
+
+```
+The "parallel" parameter is also available for the addCNV function. 
+Note, that for parallel scanning of files, 
+reading speed might be a limiting factor. 
+
+
 
 # References
 

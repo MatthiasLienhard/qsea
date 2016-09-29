@@ -8,6 +8,7 @@ fitNBglm=function(qs,design,link="log",keep, disp_method="region_wise",
         stop("disp_method should be in \"initial\",\"common\",",
             "\"cutAtQuantiles\" or \"region_wise\"")
     sampleIdx=row.names(design)
+    sampleIdx=checkSamples(qs,sampleIdx)
     fitDisp=disp_method!="initial"
     if(class(norm_method)=="character")
         norm_method=normMethod(norm_method)
@@ -52,7 +53,7 @@ fitNBglm=function(qs,design,link="log",keep, disp_method="region_wise",
     normF=nm$factors
     rm(nm)
     #if("offset" %in% norm_method){
-    #    offset=t(getOffset(qs, sampleIdx)*t(normF))
+    #    offset=t(getOffset(qs, sampleIdx,scale="rpkm")*t(normF))
     #}
 
     normF[normF<=0]=-Inf
