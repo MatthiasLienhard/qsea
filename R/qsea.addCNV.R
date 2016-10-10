@@ -4,7 +4,6 @@ findCNV<-function(sampleTable=NULL,BSgenome,chr.select=NULL,
         paired=FALSE, mu =log2(c(1/2, 2/3, 1, 3/2,2,3)), window_size=1000000, 
         normal_idx=NULL, plot_dir=NULL, MeDIP=FALSE,zygosity=NA,
         parallel=FALSE){
-    checkSampleTab(sampleTable)
     CpGrange=NULL    
     if(!MeDIP)
         message("== Analyzing Copy Number Alterations ==")
@@ -17,6 +16,9 @@ findCNV<-function(sampleTable=NULL,BSgenome,chr.select=NULL,
     if(length(CNVfname_idx)<1){
         stop("Column for CNV files (\"",file_name,"\") not found;")
     }
+    sampleTable$file_names=sampleTable[,CNVfname_idx]
+    checkSampleTab(sampleTable)
+
     file_names=sampleTable[,CNVfname_idx]
     n=length(file_names)
 
