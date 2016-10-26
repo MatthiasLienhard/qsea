@@ -30,8 +30,7 @@ getCoverage<-function(file_name=NULL,Regions=NULL, fragment_length=NULL,
             fields=c("rname", "pos", "strand", "qwidth")
         }
         if(bamindex){
-            #read only selected chromosomes            
-                        
+            #read only selected chromosomes
             scanParam=ScanBamParam(flag=scanFlag, what = fields, which=batch, 
                 mapqFilter=minMapQual)    
         }else{
@@ -50,14 +49,15 @@ getCoverage<-function(file_name=NULL,Regions=NULL, fragment_length=NULL,
             ReadsL=unlist(lapply(ReadsL[[1]],split,  
                 f=ReadsL[[1]]$rname, drop=TRUE),FALSE, FALSE)
             nchr=(length(ReadsL)/nfields)
-            chr_read=sapply(ReadsL[1:nchr],
+            chr_read=sapply(ReadsL[seq_len(nchr)],
                 function(x) as.character(x[1]))
             idx=lapply(which(chr_read %in% chr.select), seq, by=nchr, 
                 length.out=nfields)
             names(idx)=chr_read[which(chr_read %in% chr.select)]
+            idx=idx[chr.select]
             ReadsL=lapply(idx,function(x) ReadsL[x])
             ReadsL=lapply(ReadsL, 'names<-',fields)
-        }
+         }
         
         totalR=vapply(ReadsL, function(x) length(x[[1]]), 0, USE.NAMES=FALSE)
         message("Number of imported sequencing fragments: ", sum(totalR))

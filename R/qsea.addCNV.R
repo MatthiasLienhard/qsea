@@ -101,7 +101,7 @@ findCNV<-function(sampleTable=NULL,BSgenome,chr.select=NULL,
     isna=!is.finite(values)|is.na(values)
     
     #CNV analysis
-    medianValue=apply(X=values[,normal_idx], FUN=median, MARGIN=1)
+    medianValue=apply(X=values[,normal_idx, drop=FALSE], FUN=median, MARGIN=1)
     filter=medianValue>0
     #run CopyHMM on all samples and write 
     #CNV states (mean logFC of segments) in matrix    
@@ -162,7 +162,7 @@ addCNV<-function(qs,file_name, window_size=1000000, paired=FALSE,
         mu=mu, normal_idx=normal_idx, plot_dir=plot_dir, MeDIP=MeDIP, 
         zygosity=getZygosity(qs), parallel=parallel)) 
     #todo: add option to use regions of interest, not bsgenome    
-    if(! all(is.na(getOffset(qs,scale="rpkm") )) )
+    if(length(getOffset(Landsberg))>0 && ! all(is.na(getOffset(qs) )) )
         warning("Consider recalculating offset based on new CNV values")
     if("seqPref" %in% names(mcols(getRegions(qs))))
         warning("Consider recalculating sequence ",

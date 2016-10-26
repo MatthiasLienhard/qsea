@@ -1,3 +1,15 @@
+Version 1.1.1
+________________________________________________________________________________
+
+Bugfixes:
+- addCNV: Fixed crash when only one normal sample is present
+- addCoverage: fixed chr sorting issue in absence of bam index
+
+Version 1.0.0
+________________________________________________________________________________
+
+fist stable release
+
 Version 0.99.6
 ________________________________________________________________________________
 
