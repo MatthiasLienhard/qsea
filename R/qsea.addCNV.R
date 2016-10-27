@@ -162,7 +162,7 @@ addCNV<-function(qs,file_name, window_size=1000000, paired=FALSE,
         mu=mu, normal_idx=normal_idx, plot_dir=plot_dir, MeDIP=MeDIP, 
         zygosity=getZygosity(qs), parallel=parallel)) 
     #todo: add option to use regions of interest, not bsgenome    
-    if(length(getOffset(Landsberg))>0 && ! all(is.na(getOffset(qs) )) )
+    if(length(getOffset(qs))>0 && ! all(is.na(getOffset(qs) )) )
         warning("Consider recalculating offset based on new CNV values")
     if("seqPref" %in% names(mcols(getRegions(qs))))
         warning("Consider recalculating sequence ",
