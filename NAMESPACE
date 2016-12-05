@@ -83,6 +83,6 @@ importFrom(grDevices, colorRamp, colorRampPalette, dev.off, png, rgb)
 importFrom(graphics,abline, legend, lines, plot, arrows, axis, box, frame, 
     image, layout, par, points, rect, smoothScatter, symbols, text)
 importFrom(stats, as.dendrogram, as.dist, dist, hclust, median, na.omit, optim, 
-    p.adjust, pchisq, pgamma, pnorm, qpois, rnbinom, sd)
+    p.adjust, pchisq, pgamma,qgamma, pnorm, qpois, rnbinom, sd)
 useDynLib(qsea, Cdqrls)
 

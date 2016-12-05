@@ -297,44 +297,45 @@ getNormMatrix<-function(qs, methods,windows,samples){
 
 }
 
+.estimateQuantilePois<-function(y,c,o,p=.5)(qgamma(p*pgamma(o + c, y + 1) + (1-p)*pgamma(o, y + 1),y+1)-o)/c
 
 #uses binary search to find the quantile
-.estimateQuantilePois<-function(y,c,o, p=.5,tol=.001, eps=1e-16 ){
-        niter=ceiling(log2(1/tol))
-    n=length(y)
-    if(length(c)!=n ||length(o)!=n){
-        stop("argument length missmatch")
-    }
-    #c=rep(c, length.out=n)
-    #o=rep(o, length.out=n)
-    q=idx=rep(-1,n)
-    x=delta_val=matrix(c(0,1),n,2, byrow=TRUE)#upper and lower bounds
-    delta_val=matrix(c(.delta(y,c,o,p,x[,1]),.delta(y,c,o,p,x[,2])),n,2)
-    todo=seq_len(n)
-    inNA=which(is.na(y) | is.na(c) | is.na(o)|c==0 )
-    overexp=which(pgamma(o+c, y+1)<eps | delta_val[,2] <= 0 ) 
-        #^way more observed reads (y) than expected (c+o) -->methylation=1
-    underexp=which(delta_val[,1]>=0) 
-        #^less observed reads than offset -->methylation=0
-    if(length(c(inNA , overexp, underexp))>0)
-        todo=todo[-c(inNA, overexp, underexp)]
-    for(i in seq_len(niter)){
-        xnew=(x[todo,1]+x[todo,2])/2
-        delta_new=.delta(y[todo],c[todo],o[todo],p,xnew)
-        tomuch=(delta_new<=0)
-        x[todo[ tomuch],1]=xnew[ tomuch]
-        x[todo[!tomuch],2]=xnew[!tomuch]
-        delta_val[todo[ tomuch],1]=delta_new[ tomuch]
-        delta_val[todo[!tomuch],2]=delta_new[!tomuch]
-    }
-    q[inNA]=NA
-    q[overexp]=1
-    q[underexp]=0
-    r=todo
-    w=delta_val[r,2]/(delta_val[r,2]-delta_val[r,1]) #weight
-    q[r]=w*x[r,1]+(1-w)*x[r,2] #weighted average of upper and lower estimate
-    return(q)
-}
+#.estimateQuantilePois<-function(y,c,o, p=.5,tol=.001, eps=1e-16 ){
+#        niter=ceiling(log2(1/tol))
+#    n=length(y)
+#    if(length(c)!=n ||length(o)!=n){
+#        stop("argument length missmatch")
+#    }
+#    #c=rep(c, length.out=n)
+#    #o=rep(o, length.out=n)
+#    q=idx=rep(-1,n)
+#    x=delta_val=matrix(c(0,1),n,2, byrow=TRUE)#upper and lower bounds
+#    delta_val=matrix(c(.delta(y,c,o,p,x[,1]),.delta(y,c,o,p,x[,2])),n,2)
+#    todo=seq_len(n)
+#    inNA=which(is.na(y) | is.na(c) | is.na(o)|c==0 )
+#    overexp=which(pgamma(o+c, y+1)<eps | delta_val[,2] <= 0 ) 
+#        #^way more observed reads (y) than expected (c+o) -->methylation=1
+#    underexp=which(delta_val[,1]>=0) 
+#        #^less observed reads than offset -->methylation=0
+#    if(length(c(inNA , overexp, underexp))>0)
+#        todo=todo[-c(inNA, overexp, underexp)]
+#    for(i in seq_len(niter)){
+#        xnew=(x[todo,1]+x[todo,2])/2
+#        delta_new=.delta(y[todo],c[todo],o[todo],p,xnew)
+#        tomuch=(delta_new<=0)
+#        x[todo[ tomuch],1]=xnew[ tomuch]
+#        x[todo[!tomuch],2]=xnew[!tomuch]
+#        delta_val[todo[ tomuch],1]=delta_new[ tomuch]
+#        delta_val[todo[!tomuch],2]=delta_new[!tomuch]
+#    }
+#    q[inNA]=NA
+#    q[overexp]=1
+#    q[underexp]=0
+#    r=todo
+#    w=delta_val[r,2]/(delta_val[r,2]-delta_val[r,1]) #weight
+#    q[r]=w*x[r,1]+(1-w)*x[r,2] #weighted average of upper and lower estimate
+#    return(q)
+#}
 
 
 estimateEnrichmentLM<-function(qs,windowIdx, signal, min_wd=5,
