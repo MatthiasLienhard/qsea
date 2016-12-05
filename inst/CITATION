@@ -8,7 +8,7 @@ citEntry(
    year = "2016",
    journal = "Nucleic acids research",
    url = "https://www.ncbi.nlm.nih.gov/pubmed/27913729",
-   doi = "10.1093/nar/gkw1193"
+   doi = "10.1093/nar/gkw1193",
    textVersion = "Lienhard M, Grasse S, et al. (2016). {Q}{S}{E}{A} -- modelling of genome-wide DNA methylation from sequencing enrichment experiments. Nucleic Acids Res. 2016 : gkw1193v1-gkw1193. "
 )
 
