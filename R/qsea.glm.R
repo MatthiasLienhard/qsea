@@ -148,6 +148,10 @@ addContrast=function(qs,glm,contrast,coef,name,verbose=TRUE){#,parallel=FALSE){
 
     y=getCounts(qs, windows=getWindows(glm), samples=sampleIdx)+
         param$pseudocount
+    if(param$pseudocount==0)
+        y[y==0]=1
+    #y==0 for all samples is problematic --> quick n dirty fix ^
+
     fit=fitNBglmMatrix(design, y=y, nf=normF, linkf=param$link,
         disp=getFullModel(glm)$dispersion, fitDisp=FALSE)#, parallel=parallel)
     df=fit$rdf-getFullModel(glm)$rdf
@@ -170,7 +174,7 @@ fitNBglmMatrix=function(x,y,disp, nf,linkf="log", maxit=60, coef=NULL,
     #link function
     #nf=norm$factors
     #offset=offset+pseudocount
-    y=pmax(y,1)
+    
     #y[y<offset]=offset[y<offset]
     #offset[offset>0]=0
     if(linkf=="log"){
@@ -178,8 +182,8 @@ fitNBglmMatrix=function(x,y,disp, nf,linkf="log", maxit=60, coef=NULL,
         linkInv=function(eta,nf) pmax(exp(eta)*nf, .Machine$double.eps)
         dLinkInv=function(eta,nf) pmax(exp(eta)*nf, .Machine$double.eps)
 
-        
-    }else if (link=="linear"){#this is not usefull at the moment
+    #link=linear is not functional at the moment, maybe change to softmax?
+    }else if (link=="linear"){
         link=function(mu,nf) mu/nf
         #linkInv=function(x,nf, o) pmax(x*nf+t(o+t(nf)), eps)
         linkInv=function(eta,nf) pmax(eta*nf,eps)
