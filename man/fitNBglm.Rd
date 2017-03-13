@@ -6,7 +6,7 @@
 window, according to the design matrix.}
 \usage{
 fitNBglm(qs,design,link="log",keep, disp_method="region_wise",
-norm_method="rpkm",init_disp=0.5 ,verbose=TRUE, minRowSum=10, pseudocount=0 )
+norm_method="rpkm",init_disp=0.5 ,verbose=TRUE, minRowSum=10, pseudocount=1 )
 }
 \arguments{
 \item{qs}{a qseaSet object}
