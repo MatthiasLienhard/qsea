@@ -1,6 +1,6 @@
 
 fitNBglm=function(qs,design,link="log",keep, disp_method="region_wise",
-    norm_method="rpkm",init_disp=0.5 ,verbose=TRUE,minRowSum=10,pseudocount=0 ){
+    norm_method="rpkm",init_disp=0.5 ,verbose=TRUE,minRowSum=10,pseudocount=1 ){
     #parallel=FALSE){
 
     if(! disp_method %in% 
@@ -20,7 +20,7 @@ fitNBglm=function(qs,design,link="log",keep, disp_method="region_wise",
     if(missing(qs) || class(qs) != "qseaSet")
         stop("please provide a qseaSet")
     if(link !="log")
-        stop("currently, \"link\" must be \"log\"")        
+        stop("currently, \"link\" must be \"log\"")
     message("selecting regions with at least ",minRowSum," reads...")
     
     if(missing(keep)) keep=seq_along(getRegions(qs))
@@ -327,7 +327,8 @@ theta_md_matrix=function (y, mu, dfr,iter = 10, eps = .Machine$double.eps^0.25)
     n = ncol(y)
     t0 = n/rowSums((y/mu - 1)^2)
 
-    a = 2 * rowSums(y * log(pmax(1, y)/mu)) - dfr
+    #a = 2 * rowSums(y * log(pmax(1, y)/mu)) - dfr
+    a = 2 * rowSums(y * log(y/mu)) - dfr
     it = 0
     del = 1
     todo=seq_len(nrow(y))
