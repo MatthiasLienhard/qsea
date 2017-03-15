@@ -6,7 +6,8 @@
 window, according to the design matrix.}
 \usage{
 fitNBglm(qs,design,link="log",keep, disp_method="region_wise",
-norm_method="rpkm",init_disp=0.5 ,verbose=TRUE, minRowSum=10, pseudocount=1 )
+norm_method="rpkm",init_disp=0.5 ,verbose=TRUE, minRowSum=10, pseudocount=1,
+    disp_iter = 3, nChunks = NULL, parallel = FALSE)
 }
 \arguments{
 \item{qs}{a qseaSet object}
@@ -28,6 +29,9 @@ parameter for all regions, or a vector with window wise parameters.}
 \item{minRowSum}{filter out windows with less than minRowSum reads over all 
 samples}
 \item{pseudocount}{this value is added to the read counts}
+\item{disp_iter}{number of iterations for dispersion estimation}
+\item{nChunks}{fit GLMs in multiple chunks}
+\item{parallel}{use multicore processing}
 }
 \value{This function returns a qseaGLM object, containing the fitted 
 coefficients of the GLMs.}

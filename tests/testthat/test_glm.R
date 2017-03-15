@@ -1,5 +1,6 @@
 context("glm")
 library(MASS)
+library(BiocParallel)
 #test QSEAs matrix-version of glm.fit with stats::glm.fit
 
 qs <- getExampleQseaSet()
@@ -7,16 +8,17 @@ sel=1:100
 nm=qsea:::getNormMatrix(qs, methods=normMethod("beta")[[1]], windows=sel, 
 samples=getSampleNames(qs))
 design=model.matrix(~group, getSampleTable(qs))
-y=getCounts(qs,getSampleNames(qs),sel)
+y=pmax(getCounts(qs,getSampleNames(qs),sel),1)
 fitM=qsea:::fitNBglmMatrix(design,y=y,disp=.1, nf=nm$factors,
-    link="log", maxit=60, coef=NULL, eps=1e-11, fitDisp=FALSE)
+    link="log", maxit=60, coef=NULL, eps=1e-11, fitDisp=FALSE, 
+    BPPARAM=SerialParam(), nChunks=7)
 fam=negative.binomial(link="log", theta=1/0.1)
 fitR=list()
 fitR$coefficients=matrix(NA, length(sel), 2)
 fitR$deviance=numeric(length(sel))
 
 for(i in 1:length(sel)){
-    fitR_i=glm.fit(x=design, y=pmax(y[i,],1),
+    fitR_i=glm.fit(x=design, y=y[i,],
         family=fam, offset=log(nm$factors[i,]))
         fitR$deviance[i]=fitR_i$deviance
     fitR$coefficients[i,]=fitR_i$coefficients/log(2)

@@ -9,8 +9,8 @@ Subsequently, a likelihood ratio test is applied, to identify windows
 significantly dependent on the tested coefficient.
 }
 \usage{
-addContrast(qs,glm,contrast,coef,name,verbose=TRUE )
-
+addContrast(qs,glm,contrast,coef,name,verbose=TRUE, nChunks = NULL, 
+    parallel = FALSE )
 }
 \arguments{
 \item{qs}{a qseaSet object}
@@ -22,6 +22,8 @@ tested to be equal to zero.}
 \item{name}{short descriptive name for the contrast (as "TvsN"), used for 
 examples in columns of result tables}
 \item{verbose}{more messages that document the process}
+\item{nChunks}{fit GLMs in multiple chunks}
+\item{parallel}{use multicore processing}
 }
 \value{This function returns the qseaGLM object, extended by the fitted 
 coefficients of the reduced GLMs, as well as the test statistics. 

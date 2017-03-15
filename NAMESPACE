@@ -71,7 +71,8 @@ importFrom(graphics, abline, legend, lines, plot)
 importFrom(gtools, mixedsort)
 importFrom("utils", "head")
 importFrom("methods", "new")
-importFrom(BiocParallel,bplapply, SerialParam,bpparam,bpworkers,bpstart,bpstop )
+importFrom(BiocParallel,bplapply,bpmapply,SerialParam,bpparam,bpworkers,
+    bpstart,bpstop )
 importFrom(IRanges, cor, end, quantile, ranges, "ranges<-", resize, 
     restrict, start, values, var, width,unique, which, IRanges,space,
     as.matrix, as.data.frame, Views, viewSums, nir_list, collapse)
