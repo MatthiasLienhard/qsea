@@ -159,8 +159,6 @@ addNewSamples<-function(qs, sampleTable, force=FALSE, parallel=FALSE){
         matrix(unlist(coverage[seq(1,length(coverage),by=2)],FALSE,FALSE), 
         ncol=nrow(sampleTable), byrow=FALSE, 
         dimnames=list(NULL, sampleTable$sample_name)))
-    param=list(uniquePos=uniquePos, minMapQual=minMapQual, paired=paired)
-    qs=addParameters(qs,param)
     qs=setCounts(qs,count_matrix=coverage)
     qs=setLibrary(qs, "file_name", libraries)
     #addOffset
