@@ -19,7 +19,8 @@ createQseaSet,
 normMethod, 
 addContrast, 
 fitNBglm,
-getExampleQseaSet
+getExampleQseaSet,
+addNewSamples
 )
 
 exportMethods(
@@ -28,6 +29,7 @@ getSampleNames,
 getSampleGroups,
 getChrNames,
 getParameters,
+#addParameters,
 getRegions,
 getWindowSize,
 getLibSize,

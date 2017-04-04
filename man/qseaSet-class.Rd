@@ -19,6 +19,7 @@
 \alias{getCounts,qseaSet-method}
 \alias{getZygosity,qseaSet-method}
 \alias{setZygosity,qseaSet-method}
+\alias{addParameters,qseaSet-method}
 
 \alias{getWindowSize}
 \alias{getSampleTable}

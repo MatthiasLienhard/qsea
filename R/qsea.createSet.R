@@ -63,6 +63,114 @@ createQseaSet=function(sampleTable,BSgenome,chr.select,Regions,window_size=250)
 
 }
 
+addNewSamples<-function(qs, sampleTable, force=FALSE, parallel=FALSE){
+    #check consistency of sample tables 
+    if( ncol(sampleTable) != ncol(getSampleTable(qs)) ||
+        ! all.equal(colnames(sampleTable) , colnames(getSampleTable(qs))))
+        stop("columns of sampleTable must match sample table in")
+    old_samples=getSampleNames(qs)
+    facI=sapply(sampleTable, is.factor)
+    sampleTable[,facI] = sapply(sampleTable[,facI, drop=FALSE], as.character)
+    rownames(sampleTable)=sampleTable$sample_name
+    new=character(0)
+    for (sa in rownames(sampleTable)){
+        if(sa %in% old_samples){
+            if(any(sampleTable[sa,]!=getSampleTable(qs,sa), na.rm=TRUE))
+                stop("sample ",sa, " is already contained in qs, and differs")
+            else message(sa ," already contained in qs")
+        }else new=c(new,sa)
+    }
+    if(length(new)==0)
+        stop("no new samples found in sampleTable")
+    sampleTable=sampleTable[new,]
+    checkSampleTab(sampleTable)
+    message("adding ",length(new), " new samples")
+    w=FALSE
+    if(hasCNV(qs)){
+        warning("CNVs for new samples can't be added to qsea set")
+        w=TRUE
+    }
+    if(hasEnrichment(qs) ){
+        warning("Enrichment parameters for new samples can't be added to qsea set")
+        w=TRUE
+    }
+    if (w && !force)
+        stop("use force=TRUE to force adding new samples ", 
+            "by first removeing components that can't be added individually ",
+            "for new samples")
+    qs=setSampleTable(qs, rbind(getSampleTable(qs), sampleTable))
+    qs=setCNV(qs,GRanges()) #remove CNV
+    qs=setEnrichment(qs,list()) #remove Enrichment
+    chrN=mixedsort(levels(seqnames(getRegions(qs))))
+    
+    cyM=matrix(2,nrow(sampleTable), length(chrN), 
+        dimnames=list(sampleTable$sample_name,chrN ))
+    sexIdx=match(c("sex", "gender"), names(sampleTable))
+    sexIdx=head(sexIdx[!is.na(sexIdx)],1)
+    if(length(sexIdx)==0){
+        sex=rep("unknown", nrow(sampleTable))
+        if(any(c("X", "Y","chrX", "chrY") %in% chrN))
+            warning("no column \"sex\" or \"gender\"found in sampleTable, ",
+                "assuming heterozygosity for all selected chromosomes")
+    }else{
+        sex=sampleTable[,sexIdx]
+        mIdx=sex %in% c("M","m", "male")
+        fIdx=sex %in% c("F","f", "female")
+        yIdx=colnames(cyM) %in% c("Y", "chrY")
+        xIdx=colnames(cyM) %in% c("X", "chrX")
+        if (any(!(mIdx|fIdx)))
+            warning("unknown sex specified sampleTable for sample(s) ",
+                paste(rownames(cyM)[!(mIdx|fIdx)],collapse=", "),
+                "; assuming heterozygosity for all selected chromosomes")
+        cyM[mIdx,yIdx|xIdx]=1
+        cyM[fIdx,yIdx]=0
+    }
+    qs=setZygosity(qs,rbind(getZygosity(qs), cyM))
+
+    if(nrow(getCounts(qs))==0)
+        return(qs)
+        
+    #add counts for new samples
+    fragment_length=getParameters(qs, "fragment_length")
+    uniquePos=getParameters(qs, "uniquePos")
+    minMapQual=getParameters(qs, "minMapQual")
+    paired=getParameters(qs, "paired")
+
+    fname_idx=which(names(sampleTable)=="file_name" )[1]
+    # get the coverage
+    if(parallel) {  
+        BPPARAM=bpparam()
+        message("Scanning ",bpworkers(BPPARAM) , " files in parallel")
+    }else
+        BPPARAM=SerialParam()
+    
+    coverage=unlist(bplapply(X=sampleTable[,fname_idx],FUN=getCoverage, 
+            Regions=getRegions(qs),fragment_length=fragment_length,
+            minMapQual=minMapQual, paired=paired, uniquePos=uniquePos, 
+            BPPARAM=BPPARAM ),FALSE, FALSE)
+    
+    libraries=rbind(getLibrary(qs,"file_name"), 
+        matrix(unlist(coverage[seq(2,length(coverage),by=2)],FALSE,FALSE),
+        nrow(sampleTable),6, byrow=TRUE, dimnames=list(sampleTable$sample_name, 
+            c("total_fragments", "valid_fragments","library_factor", 
+                "fragment_length", "fragment_sd", "offset"))))
+
+    coverage=cbind(getCounts(qs), 
+        matrix(unlist(coverage[seq(1,length(coverage),by=2)],FALSE,FALSE), 
+        ncol=nrow(sampleTable), byrow=FALSE, 
+        dimnames=list(NULL, sampleTable$sample_name)))
+    param=list(uniquePos=uniquePos, minMapQual=minMapQual, paired=paired)
+    qs=addParameters(qs,param)
+    qs=setCounts(qs,count_matrix=coverage)
+    qs=setLibrary(qs, "file_name", libraries)
+    #addOffset
+    if(any(!is.na(getOffset(qs))))
+        qs=addOffset(qs)
+    #estimateLibraryFactors
+    if(any(!is.na(getLibrary(qs, "file_name")[,"library_factor"])))
+        qs=addLibraryFactors(qs)
+    return(qs)
+}
 #for each window, calculate the sequence preference from low coverage input seq
 addSeqPref<-function(qs, seqPref,file_name, fragment_length, paired=FALSE, 
         uniquePos=TRUE, alpha=0.05, pseudocount=5, cut=3){
@@ -168,10 +276,12 @@ addCoverage<-function(qs, fragment_length, uniquePos=TRUE, minMapQual=1,
     coverage=matrix(unlist(coverage[seq(1,length(coverage),by=2)],FALSE,FALSE), 
         ncol=nrow(sampleTable), byrow=FALSE, 
         dimnames=list(NULL, sampleTable$sample_name))
-
+    param=list(uniquePos=TRUE, minMapQual=minMapQual, paired=paired)
+    qs=addParameters(qs,param)
     qs=setCounts(qs,count_matrix=coverage)
     setLibrary(qs, "file_name", libraries)
 }
+
 addLibraryFactors<-function(qs, factors,...){
     if(missing(factors)){
         message("deriving TMM library factors for ", 
@@ -185,6 +295,7 @@ addLibraryFactors<-function(qs, factors,...){
     lib[, "library_factor"]=factors
     setLibrary(qs, "file_name", lib)
 }
+
 estimateLibraryFactors<-function(qs,trimA=c(.5,.99), trimM=c(.1,.9),
         doWeighting=TRUE, ref=1, plot=FALSE, nReg=500000){
     if( length(trimM) != 2 || trimM[1]>=trimM[2] || trimM[1]<0 || trimM[2] > 1)

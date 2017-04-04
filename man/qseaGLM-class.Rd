@@ -5,6 +5,7 @@
 \alias{qseaGLM}
 \alias{show,qseaGLM-method}
 \alias{getParameters,qseaGLM-method}
+\alias{addParameters,qseaGLM-method}
 \alias{getSampleNames,qseaGLM-method}
 
 \title{qseaGLM class and its methods}

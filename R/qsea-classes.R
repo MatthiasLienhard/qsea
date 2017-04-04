@@ -41,6 +41,13 @@ setMethod('getSampleTable', 'qseaSet',
             samples=checkSamples(object, samples)
             object@sampleTable[samples,] 
         })
+setGeneric('setSampleTable', 
+        function(object, ...) standardGeneric('setSampleTable'))
+setMethod('setSampleTable', 'qseaSet', 
+        function(object, sampleTable){
+            object@sampleTable=sampleTable
+            object 
+        })
 
 # short to get sample names
 setGeneric('getSampleNames', 
@@ -88,10 +95,21 @@ setMethod('setZygosity','qseaSet', function(object, zygosityMatrix) {
 })
 
 # parameters
-setGeneric('getParameters', function(object) 
+setGeneric('getParameters', function(object,...) 
     standardGeneric('getParameters'))
-setMethod('getParameters', 'qseaSet', function(object) 
-    object@parameters)
+setMethod('getParameters', 'qseaSet', function(object, id) {
+    if(missing(id)) #return the list
+        object@parameters
+    else #return the element
+        object@parameters[[id]]
+    })
+setGeneric('addParameters', 
+    function(object,...) standardGeneric('addParameters'))
+setMethod('addParameters', 'qseaSet', 
+    function(object, param)    {
+        object@parameters<-c(object@parameters,param) 
+        object})
+
 
 setGeneric('hasEnrichment', function(object) 
     standardGeneric('hasEnrichment'))
@@ -358,8 +376,20 @@ setGeneric('getDesignMatrix',
 setMethod('getDesignMatrix', 'qseaGLM', function(object) 
     object@fullModelDesign)
 
-setMethod('getParameters', 'qseaGLM', function(object) 
-    object@parameters)
+#setGeneric('getParameters', 
+#    function(object, ...) standardGeneric('getParameters'))
+setMethod('getParameters', 'qseaGLM', function(object, id) {
+    if(missing(id)) #return the list
+        object@parameters
+    else #return the element
+        object@parameters[[id]]
+    })
+    
+
+setMethod('addParameters', 'qseaGLM', 
+    function(object, param)    {
+        object@parameters<-c(object@parameters,param) 
+        object})
 
 ### show ###
 setMethod('show', signature='qseaGLM', definition=function(object) {
