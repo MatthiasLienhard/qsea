@@ -6,12 +6,12 @@
 \description{This function analyses the dependency of enrichment on a 
 sequence pattern, based on a subset of windows for which the signal is known.}
 \usage{
-addEnrichmentParameters(qs, pattern_name="CpG", signal, windowIdx, 
+addEnrichmentParameters(qs, enrichmentPattern, signal, windowIdx, 
 min_wd=5,bins=seq(.5,40.5,1))
 }
 \arguments{
 \item{qs}{The qseaSet object}
-\item{pattern_name}{The name of the pattern, on which the enrichment 
+\item{enrichmentPattern}{The name of the pattern, on which the enrichment 
 depends on (usually CpG for methylation analysis). 
 This name must correspond to the name specified in addPatternDensity()}
 \item{windowIdx}{vector of window indices, for which "true" 
@@ -40,7 +40,7 @@ wd=which(getRegions(qs)$CpG_density>1 &
     getRegions(qs)$CpG_density<15)
 signal=(15-getRegions(qs)$CpG_density[wd])*.55/15+.25
 signal=matrix(signal,nrow=length(signal),ncol=length(getSampleNames(qs)))
-qs=addEnrichmentParameters(qs, pattern_name="CpG", 
+qs=addEnrichmentParameters(qs, enrichmentPattern="CpG", 
     windowIdx=wd, signal=signal)
 }
 

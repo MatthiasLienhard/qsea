@@ -107,7 +107,9 @@ setGeneric('addParameters',
     function(object,...) standardGeneric('addParameters'))
 setMethod('addParameters', 'qseaSet', 
     function(object, param)    {
-        object@parameters<-c(object@parameters,param) 
+        old=object@parameters
+        old=old[! names(old) %in% names(param)]
+        object@parameters<-c(old,param) 
         object})
 
 
@@ -303,6 +305,9 @@ setMethod('setCNV', 'qseaSet', function(object, cnv){
 })
 
 # Counts
+setGeneric('hasCounts', function(object) standardGeneric('hasCounts'))
+setMethod('hasCounts', 'qseaSet', function(object) nrow(object@count_matrix)>1)
+
 setGeneric('getCounts', function(object,...) 
     standardGeneric('getCounts'))
 setMethod('getCounts', 'qseaSet', function(object,samples=NULL, windows=NULL ){

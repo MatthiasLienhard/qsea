@@ -279,7 +279,7 @@ data(tcga_luad_lusc_450kmeth, package="MEDIPSData")
 
 wd=findOverlaps(tcga_luad_lusc_450kmeth, getRegions(qseaSet), select="first")
 signal=as.matrix(mcols(tcga_luad_lusc_450kmeth)[,rep(1:2,3)])
-qseaSet=addEnrichmentParameters(qseaSet, pattern_name="CpG", 
+qseaSet=addEnrichmentParameters(qseaSet, enrichmentPattern="CpG", 
     windowIdx=wd, signal=signal)
 ```
 
@@ -296,7 +296,7 @@ these assumptions would be a poor fit and lead to false results.
 wd=which(getRegions(qseaSet)$CpG_density>1 &
     getRegions(qseaSet)$CpG_density<15)
 signal=(15-getRegions(qseaSet)$CpG_density[wd])*.55/15+.25
-qseaSet_blind=addEnrichmentParameters(qseaSet, pattern_name="CpG", 
+qseaSet_blind=addEnrichmentParameters(qseaSet, enrichmentPattern="CpG", 
     windowIdx=wd, signal=signal)
 ```
 

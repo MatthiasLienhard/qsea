@@ -1,8 +1,8 @@
 Package: qsea
 Type: Package
 Title: IP-seq data analysis and vizualization
-Version: 1.1.6
-Date: 2017-04-04
+Version: 1.1.7
+Date: 2017-04-11
 Author: Matthias Lienhard, Lukas Chavez, Ralf Herwig
 Maintainer: Matthias Lienhard <lienhard@molgen.mpg.de>
 Description: qsea (quantitative sequencing enrichment analysis) was developed 

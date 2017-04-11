@@ -85,7 +85,7 @@ getExampleQseaSet<-function(CpG=TRUE,CNV=TRUE,repl=2,
             signal=matrix(c(rep(trueMethT,repl), rep(trueMethN, repl))
                 ,ncol=n)
             signal[signal<.8]=NA
-            qs=addEnrichmentParameters(qs,pattern_name="CpG", 
+            qs=addEnrichmentParameters(qs,enrichmentPattern="CpG", 
                 signal=signal[f,], windowIdx=f )
         }
     }

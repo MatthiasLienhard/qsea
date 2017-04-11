@@ -159,14 +159,17 @@ addNewSamples<-function(qs, sampleTable, force=FALSE, parallel=FALSE){
         matrix(unlist(coverage[seq(1,length(coverage),by=2)],FALSE,FALSE), 
         ncol=nrow(sampleTable), byrow=FALSE, 
         dimnames=list(NULL, sampleTable$sample_name)))
+
     qs=setCounts(qs,count_matrix=coverage)
     qs=setLibrary(qs, "file_name", libraries)
-    #addOffset
-    if(any(!is.na(getOffset(qs))))
-        qs=addOffset(qs)
-    #estimateLibraryFactors
-    if(any(!is.na(getLibrary(qs, "file_name")[,"library_factor"])))
+    #addOffset & estimateLibraryFactors
+    hasLibF=any(!is.na(getLibrary(qs, "file_name")[,"library_factor"]))
+    hasOffset=any(!is.na(getOffset(qs)))
+    if(hasLibF){
         qs=addLibraryFactors(qs)
+        if(hasOffset)
+            qs=addOffset(qs)
+    }
     return(qs)
 }
 #for each window, calculate the sequence preference from low coverage input seq
@@ -281,6 +284,8 @@ addCoverage<-function(qs, fragment_length, uniquePos=TRUE, minMapQual=1,
 }
 
 addLibraryFactors<-function(qs, factors,...){
+    if(!hasCounts(qs))
+        stop("No read counts found in qsea set. Run addCoverage first.")
     if(missing(factors)){
         message("deriving TMM library factors for ", 
             length(getSampleNames(qs))," samples" )
@@ -353,16 +358,22 @@ estimateLibraryFactors<-function(qs,trimA=c(.5,.99), trimM=c(.1,.9),
 }
 
 
-addEnrichmentParameters<-function(qs, pattern_name="CpG", signal,
+addEnrichmentParameters<-function(qs, enrichmentPattern, signal,
         windowIdx, min_wd=5,bins=seq(.5,40.5,1)){
     if(missing (windowIdx))
         stop("please specify the windows for enrichment analysis")
     if(missing (signal))
         stop("please provide a signal matrix for the specified windows")
+    if(missing(enrichmentPattern))
+            enrichmentPattern=getParameters(qs, "enrichmentPattern")
+    if(is.null(enrichmentPattern))
+            stop("please specify sequence pattern for enrichment analysis")
+
     enrichment=estimateEnrichmentLM(qs,windowIdx=windowIdx, signal=signal, 
-        min_wd=min_wd,bins=bins, pattern_name=pattern_name)
+        min_wd=min_wd,bins=bins, pattern_name=enrichmentPattern)
     parameters=fitEnrichmentProfile(enrichment$factors, enrichment$density, 
         enrichment$n, minN=1)
+    addParameters(qs,list(enrichmentPattern=enrichmentPattern))
     setEnrichment(qs, c(list(parameters=parameters),enrichment))
 }
 
@@ -402,12 +413,16 @@ subdivideRegions<-function(Regions, chr.select,window_size, BSgenome){
 
 addOffset<-function(qs,enrichmentPattern , maxPatternDensity=0.01,offset){
     if(missing(offset)){
+
         if(missing(enrichmentPattern))
+            enrichmentPattern=getParameters(qs, "enrichmentPattern")
+        if(is.null(enrichmentPattern))
             stop("please specify sequence pattern for enrichment analysis")
         offset=estimateOffset(qs,enrichmentPattern, maxPatternDensity)
     }
     lib=getLibrary(qs, "file_name")    
     lib[,"offset"]=offset
+    qs= addParameters(qs,list(enrichmentPattern=enrichmentPattern))
     setLibrary(qs, "file_name", lib)
 }
 
