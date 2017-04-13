@@ -81,7 +81,7 @@ importFrom(IRanges, cor, end, quantile, ranges, "ranges<-", resize,
 importFrom(stats, lm, t.test, wilcox.test, qnbinom)
 importFrom(utils, read.table, setTxtProgressBar, txtProgressBar,write.table)
 importFrom(Rsamtools, scanBam,ScanBamParam,scanBamFlag)
-importFrom(GenomeInfoDb, seqinfo, seqnames, seqlevels, seqlengths, Seqinfo )
+importFrom(GenomeInfoDb, seqinfo, seqnames, seqlevels, seqlengths, Seqinfo,"seqlevels<-" )
 importFrom(grDevices, colorRamp, colorRampPalette, dev.off, png, rgb)
 importFrom(graphics,abline, legend, lines, plot, arrows, axis, box, frame, 
     image, layout, par, points, rect, smoothScatter, symbols, text)

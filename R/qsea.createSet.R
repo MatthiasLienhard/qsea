@@ -11,7 +11,8 @@ createQseaSet=function(sampleTable,BSgenome,chr.select,Regions,window_size=250)
     message("==== Creating qsea set ====")
     # sort chromosomes
     parameters=list(window_size=window_size)    
-    if(! missing(chr.select)){
+    if(!missing(chr.select)){
+        chr.select=mixedsort(as.character(chr.select))
         message("restricting analysis on ", paste(chr.select, collapse=", "))
     } 
     if (!missing(BSgenome)) {
@@ -27,7 +28,7 @@ createQseaSet=function(sampleTable,BSgenome,chr.select,Regions,window_size=250)
         message("Dividing provided regions in ", window_size, "nt windows")
         Regions=subdivideRegions(Regions, chr.select,window_size, BSgenome)
     }
-    chrN=mixedsort(levels(seqnames(Regions)))
+    chrN=seqlevels(Regions)
     
     cyM=matrix(2,nrow(sampleTable), length(chrN), 
         dimnames=list(sampleTable$sample_name,chrN ))
@@ -378,14 +379,16 @@ addEnrichmentParameters<-function(qs, enrichmentPattern, signal,
 }
 
 subdivideRegions<-function(Regions, chr.select,window_size, BSgenome){
+    if(missing(chr.select))
+        chr.select=mixedsort(seqlevels(Regions))
     Regions=Regions[as.vector(seqnames(Regions)) %in% chr.select]
-    #resize (enlarge) to a multiple of window_size
+    #order according to chr.select
+    seqlevels(Regions)=chr.select
     #merge overlapping windows
-        
-    #resize again?
-    Regions=reduce(Regions)
+    Regions=reduce(sort(Regions))
     ranges=ranges(Regions)
 
+    #resize (enlarge) to a multiple of window_size
     pos=apply(FUN=function(x) seq(from=x[1], to=x[2], by=window_size), 
         X=as.data.frame(ranges),MARGIN=1)
     if(class(pos)=="matrix"){
