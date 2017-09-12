@@ -32,12 +32,20 @@ makeGenomeWindows<-function(BSgenome=NULL, chr.select=NULL, window_size=250){
 
 
 estimatePatternDensity <- function(Regions=NULL, pattern="CG", BSgenome=NULL,
-        fragment_length=300, fragment_sd=0, fixed=TRUE ){
+        fragment_length=300, fragment_sd=0, fixed=TRUE, 
+        masks=c("AGAPS","AMB", "RM", "TRF")[1:2]){
     ## Get the genomic positions of the sequence pattern
     message("Get genomic positions of \"",pattern,"\" ...",sep="")
-    dataset=getBSgenome(BSgenome, masked=FALSE)    
+    dataset=getBSgenome(BSgenome)
     patternDensity=rep(NA, length(Regions))
     window_size=width(Regions[1])
+    if(length(masks)>0 &&
+        any(! masks %in% masknames(dataset))){
+            warning("Masks selected but not found in BSGenome: ",
+                paste(masks[! masks %in% masknames(dataset)], collapse=", "), 
+                ". \nConsider using the .masked version of the package")
+            masks=masks[masks %in% masknames(dataset)]
+    }
     #rcpattern=reverseComplement(pattern)
     len=seqlengths(Regions)
     genomeRange=GRanges(names(len), IRanges(1, len), strand="+")
@@ -52,7 +60,12 @@ estimatePatternDensity <- function(Regions=NULL, pattern="CG", BSgenome=NULL,
         message("searching ",chr," for \"",pattern,"\"...")
         sel=seqnames(Regions)==chr
         chr_seq=dataset[[chr]]
+        if(!is.null(masks(chr_seq))){
+            active(masks(chr_seq))<-FALSE
+            active(masks(chr_seq))[masks]<-TRUE       
+        }
         chr_seq<-maskMotif(chr_seq, "N")
+        
         pIdx=start(matchPattern(pattern=DNAString(pattern),
             subject=chr_seq, fixed=fixed))
         message("found ", length(pIdx), " occurances of ",

@@ -8,7 +8,7 @@ pattern (such as CpG dinucleotides) within the overlapping sequencing
 fragments for each genomic window}
 \usage{
 addPatternDensity(qs, pattern,name, fragment_length, fragment_sd,
-patternDensity, fixed=TRUE)
+patternDensity, fixed=TRUE, masks=c("AGAPS","AMB", "RM", "TRF")[1:2])
 }
 
 \arguments{
@@ -27,6 +27,8 @@ containing a value (greater than 0) for each genomic window.}
 \item{fixed}{if FALSE, an IUPAC ambiguity code in the pattern can match 
 any letter in the reference genome that is associated with
         the code, and vice versa.}
+\item{masks}{names of the BSgenome masks to be active.}
+
 }
 \value{The function returns the qseaSet object, extended by the pattern 
 density for all genomic windows}

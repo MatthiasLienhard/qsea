@@ -53,10 +53,11 @@ importClassesFrom(methods, character, numeric)
 importMethodsFrom(methods, show)
 importMethodsFrom(BiocGenerics, plotPCA)
 importMethodsFrom(Biostrings, matchPattern, reverseComplement, vcountPattern)
-importMethodsFrom(BSgenome, getSeq)
+importMethodsFrom(BSgenome, getSeq,masknames)
 importMethodsFrom(IRanges, cor, start,end, quantile, ranges, "ranges<-", 
     resize, restrict, values, var, width,unique,as.vector, which, overlapsAny, 
-    as.matrix, as.data.frame, '[', Views, viewSums, nir_list, collapse)
+    as.matrix, as.data.frame, '[', Views, viewSums, nir_list, collapse,
+    "active<-", active)
 importMethodsFrom(methods, show)
 importMethodsFrom(GenomicRanges, as.data.frame, length, '[',
     reduce, coverage, findOverlaps, countOverlaps, disjointBins)
@@ -67,7 +68,7 @@ importFrom(limma, contrastAsCoef)
 importFrom(GenomicRanges, GRanges, seqnames, 
     as.data.frame, mcols, "mcols<-", 
     reduce, coverage, findOverlaps, countOverlaps, disjointBins)
-importFrom(Biostrings, DNAString, DNAStringSet, maskMotif, masks)
+importFrom(Biostrings, DNAString, DNAStringSet, maskMotif, masks,"masks<-")
 importFrom(BSgenome, bsapply,getBSgenome)
 importFrom(graphics, abline, legend, lines, plot)
 importFrom(gtools, mixedsort)

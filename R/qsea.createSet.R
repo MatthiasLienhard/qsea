@@ -219,7 +219,7 @@ getFragmentLength<-function(qs){
 }
 
 addPatternDensity<-function(qs, pattern,name, fragment_length, fragment_sd,
-        patternDensity, fixed=TRUE){
+        patternDensity, fixed=TRUE,masks=c("AGAPS","AMB", "RM", "TRF")[1:2]){
     if(missing(patternDensity) ){
         BSgenome=getGenome(qs)
         if(is.null(BSgenome))
@@ -238,7 +238,7 @@ addPatternDensity<-function(qs, pattern,name, fragment_length, fragment_sd,
         }                
         patternDensity=estimatePatternDensity(Regions=getRegions(qs), 
             pattern=pattern,BSgenome=BSgenome, fragment_length=fragment_length, 
-            fragment_sd=fragment_sd, fixed=fixed) 
+            fragment_sd=fragment_sd, fixed=fixed, masks=masks) 
     }
     #if(! all(is.na(getOffset(qs,scale="rpkm") ) ))
     #    warning("Consider recalculating offset based on new pattern density")
@@ -316,11 +316,16 @@ estimateLibraryFactors<-function(qs,trimA=c(.5,.99), trimM=c(.1,.9),
     if(is.na(ref) | !is.numeric(ref) |ref<1 | ref > n )
         stop("invalid reference sample for TMM (",ref,")")
     others=seq_len(n)[-ref]
-    tReg=length(getRegions(qs))
     libsz=getLibSize(qs, normalized=FALSE)
     normM=list(scaled=c("zygosity","cnv", "preference"))
+    if(ncol(mcols(getRegions(qs)))>=1){
+        wd=which(!is.na(mcols(getRegions(qs))[,1]))
+        wd=wd[seq(1,length(wd), ceiling(length(wd)/nReg))]
+    }else{
+        wd=seq(1,length(wd), ceiling(length(wd)/nReg))
+    }
     values=getNormalizedValues(qs,methods=normM,
-        windows=seq(from=1,to=tReg,by=max(1,round(tReg/nReg))), 
+        windows=wd, 
         samples=getSampleNames(qs) )
     values[values<1]=NA
 

@@ -165,8 +165,8 @@ setGeneric('addRegionsFeature',
     function(object,...) standardGeneric('addRegionsFeature'))
 setMethod('addRegionsFeature', 'qseaSet', function(object, name, feature){
     feature=data.frame(feature)
-    names(feature)=name
     mcols(object@regions)=cbind(mcols(object@regions), feature)
+    names(mcols(object@regions))[ncol(mcols(object@regions))]=name
     object
 })
 
