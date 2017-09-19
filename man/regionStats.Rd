@@ -6,7 +6,7 @@
  and counts the number of overlapping windows}
 \usage{
 regionStats(qs, subsets = list(covered = which(rowSums(getCounts(qs)) >= 20)),
- ROIs = list(), minoverlap = 1, maxgap = 0)
+ ROIs = list(), minoverlap = 0, maxgap = -1)
 }
 \arguments{
 \item{qs}{A qsea Set object}
