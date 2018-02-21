@@ -322,7 +322,8 @@ estimateLibraryFactors<-function(qs,trimA=c(.5,.99), trimM=c(.1,.9),
         wd=which(!is.na(mcols(getRegions(qs))[,1]))
         wd=wd[seq(1,length(wd), ceiling(length(wd)/nReg))]
     }else{
-        wd=seq(1,length(wd), ceiling(length(wd)/nReg))
+        tReg = length(getRegions(qs))
+        wd=seq(1,tReg, ceiling(tReg/nReg))
     }
     values=getNormalizedValues(qs,methods=normM,
         windows=wd, 

@@ -424,7 +424,7 @@ setMethod('show', signature='qseaPCA', definition=function(object) {
     message("qsea PCA object")
     message("=======================================")
     message("PCA from ",length(object@sample_names)," samples and ",
-        length(object@factors_names), " genomic windows")
+        length(object@factor_names), " genomic windows")
 })
 
 setGeneric('getSVD', function(object) standardGeneric('getSVD'))
