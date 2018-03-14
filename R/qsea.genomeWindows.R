@@ -1,9 +1,9 @@
 
-makeGenomeWindows<-function(BSgenome=NULL, chr.select=NULL, window_size=250){
-    if(is.null(BSgenome)){stop("Please specify genome")}
+makeGenomeWindows<-function(BSgenome, chr.select, window_size=250){
+    if(missing(BSgenome)){stop("Please specify genome")}
     dataset=get(ls(paste("package:", BSgenome, sep="")))
     chr_length=seqlengths(dataset)
-    if(! is.null(chr.select) ) {
+    if(! missing(chr.select) ) {
         if(length(intersect(names(chr_length),chr.select))==0) 
             stop ("specified chromosomes not found in ", BSgenome)
         chr=as.vector(na.omit(
@@ -23,7 +23,7 @@ makeGenomeWindows<-function(BSgenome=NULL, chr.select=NULL, window_size=250){
         chr_length=chr_length[!filter]
     }
     nr_wd=floor(chr_length/window_size)
-    wd_start=unlist(lapply(FUN=seq, X=chr_length-window_size, 
+    wd_start=unlist(lapply(FUN=seq, X=chr_length-window_size+1, 
         from=1,by=window_size), FALSE, FALSE)    
     seqinfo = Seqinfo(chr,chr_length, NA, BSgenome)
     return(Regions=GRanges(seqnames=rep(factor(chr),nr_wd), 
@@ -31,7 +31,7 @@ makeGenomeWindows<-function(BSgenome=NULL, chr.select=NULL, window_size=250){
 }
 
 
-estimatePatternDensity <- function(Regions=NULL, pattern="CG", BSgenome=NULL,
+estimatePatternDensity <- function(Regions, pattern="CG", BSgenome,
         fragment_length=300, fragment_sd=0, fixed=TRUE, 
         masks=c("AGAPS","AMB", "RM", "TRF")[1:2]){
     ## Get the genomic positions of the sequence pattern
