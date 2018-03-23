@@ -1,7 +1,7 @@
 Package: qsea
 Type: Package
 Title: IP-seq data analysis and vizualization
-Version: 1.3.4
+Version: 1.5.1
 Date: 2018-03-22
 Author: Matthias Lienhard, Lukas Chavez, Ralf Herwig
 Maintainer: Matthias Lienhard <lienhard@molgen.mpg.de>
@@ -16,7 +16,7 @@ License: GPL (>=2)
 biocViews: Sequencing, DNAMethylation, CpGIsland, ChIPSeq,
         Preprocessing, Normalization, QualityControl, Visualization,
         CopyNumberVariation, ChipOnChip, DifferentialMethylation
-Depends: R (>= 3.3)
+Depends: R (>= 3.5)
 Imports: Biostrings, graphics, gtools, methods, stats, utils, HMMcopy,
         rtracklayer, BSgenome, GenomicRanges, Rsamtools, IRanges,
         limma, GenomeInfoDb, BiocGenerics, grDevices, zoo, BiocParallel
@@ -24,5 +24,6 @@ VignetteBuilder: knitr
 Suggests: BSgenome.Hsapiens.UCSC.hg19, MEDIPSData, testthat,
         BiocStyle, knitr, rmarkdown
 ByteCompile: no
-Packaged: 2017-09-18 12:22:12 UTC; lienhard
+Packaged: 2018-03-22 12:22:12 UTC; lienhard
 NeedsCompilation: yes
+

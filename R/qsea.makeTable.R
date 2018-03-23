@@ -224,7 +224,7 @@ isSignificant<-function(glm,contrast=NULL, fdr_th=NULL, pval_th=NULL,
 
 regionStats<-function(qs,
     subsets=list(covered=which(rowSums(getCounts(qs))>=20)), ROIs=list(),
-    minoverlap=1L, maxgap=-1L )
+    minoverlap=0L, maxgap=-1L )
 {
     if(missing(qs) || class(qs)!="qseaSet")
         stop("qs must be a qseaSet object")

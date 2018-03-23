@@ -89,9 +89,11 @@ estimatePatternDensity <- function(Regions, pattern="CG", BSgenome,
         #set density of regions with more that 50% masked 
         #(or hardmasked by N) to NA
         masked=reduce(nir_list(collapse(masks(chr_seq)))[[1]])
-        midx=overlapsAny(Regions[sel],GRanges(chr,masked),
-            minoverlap=window_size/2)
-        md[midx]=NA
+        if(length(masked)>0){
+            midx=overlapsAny(Regions[sel],GRanges(chr,masked),
+                minoverlap=window_size/2)
+            md[midx]=NA
+        }
         patternDensity[which(sel)]=md    
         message(" ...done")
     }
