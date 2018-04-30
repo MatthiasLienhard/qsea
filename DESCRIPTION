@@ -1,7 +1,7 @@
 Package: qsea
 Type: Package
 Title: IP-seq data analysis and vizualization
-Version: 1.5.1
+Version: 1.6.0
 Date: 2018-03-22
 Author: Matthias Lienhard, Lukas Chavez, Ralf Herwig
 Maintainer: Matthias Lienhard <lienhard@molgen.mpg.de>
