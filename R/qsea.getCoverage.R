@@ -69,6 +69,7 @@ getCoverage<-function(file_name=NULL,Regions=NULL, fragment_length=NULL,
                 message("selecting fragments containing between ",CpGrange[1],
                     " and ",CpGrange[2]," CpGs")
         }
+        
         processBam<-function(idx){        
             #message("processing ", batchNames[idx]," in process ",Sys.getpid())
 
@@ -97,19 +98,22 @@ getCoverage<-function(file_name=NULL,Regions=NULL, fragment_length=NULL,
                 keep=keep & nCpG >= CpGrange[1] & nCpG <= CpGrange[2]
                 rm(nCpG)
             }
-            if(paired){
-                isize=isize[keep]
-                fragment=c(mean(isize),var(isize), 
-                    min(isize), max(isize) )                 
+            if( totalR[idx] > 0 && sum(keep) > 0 ){
+                if(paired){
+                    isize=isize[keep]
+                    fragment=c(mean(isize),var(isize), 
+                        min(isize), max(isize) )                 
+                }else{
+                    isize=fragment_length[1]
+                    fragment=NULL
+                }
+                #mass point of reads
+                massP = GRanges(seqnames=ReadsL[[idx]]$rname[keep], 
+                    ranges=IRanges(start=pos[keep]+round(isize/2), width=1))
             }else{
-                isize=fragment_length[1]
-                fragment=NULL
+                # no valid reads for this chromosome
+                return(list(counts=numeric(0), fragment=NULL))
             }
-            #mass point of reads
-            massP = data.frame(seqnames=ReadsL[[idx]]$rname[keep], 
-                start=pos[keep]+round(isize/2), width=1)
-            massP = GRanges(seqnames=ReadsL[[idx]]$rname[keep], 
-                ranges=IRanges(start=pos[keep]+round(isize/2), width=1))
             return(list(counts=countOverlaps(
                 Regions[batchOffset[idx]:(batchOffset[idx+1]-1)], massP), 
                 fragment=fragment))
@@ -130,9 +134,11 @@ getCoverage<-function(file_name=NULL,Regions=NULL, fragment_length=NULL,
         message("Number of selected sequencing fragments: ", sum(uniqueR))
         if(paired){
             n=sum(uniqueR)
-            stats=as.data.frame(count_list[countIdx+1], fix.empty.names=FALSE)
-            mu=sum(stats[1,]*uniqueR/n)
-            sd=sqrt(1/(n-1)*(sum(uniqueR*(mu-stats[1,])^2) + 
+            stats=count_list[countIdx+1]
+            nN=uniqueR>0
+            stats=as.data.frame(stats[nN], fix.empty.names=FALSE)            
+            mu=sum(stats[1,]*uniqueR[nN]/n)
+            sd=sqrt(1/(n-1)*(sum(uniqueR[nN]*(mu-stats[1,])^2) + 
                 sum((uniqueR-1)*stats[2,])))
             message("Mean fragment length: ", 
                 round(mu,3), " nt", sep="")
