@@ -4,7 +4,7 @@ Bugfix: addCoverage crashes when there are no reads for chromosome/contig
 
 Version 1.5.1
 ________________________________________________________________________________
-Bugfix: Crashes due to changes in getOverlaps
+Bugfix: Crash due to changes in getOverlaps
 
 
 Version 1.3.2
