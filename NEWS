@@ -1,3 +1,8 @@
+Version 1.7.2
+________________________________________________________________________________
+Bugfix: addCoverage fixed fragment size sd for chromosomes with 1 read
+Bugfix: addCoverage fixed missing regions in count_matrix for chromosomes without any reads
+
 Version 1.7.1
 ________________________________________________________________________________
 Bugfix: addCoverage crashes when there are no reads for chromosome/contig

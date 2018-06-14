@@ -112,7 +112,7 @@ getCoverage<-function(file_name=NULL,Regions=NULL, fragment_length=NULL,
                     ranges=IRanges(start=pos[keep]+round(isize/2), width=1))
             }else{
                 # no valid reads for this chromosome
-                return(list(counts=numeric(0), fragment=NULL))
+                return(list(counts=numeric(batchOffset[idx+1]-batchOffset[idx]), fragment=NULL))
             }
             return(list(counts=countOverlaps(
                 Regions[batchOffset[idx]:(batchOffset[idx+1]-1)], massP), 
@@ -136,10 +136,11 @@ getCoverage<-function(file_name=NULL,Regions=NULL, fragment_length=NULL,
             n=sum(uniqueR)
             stats=count_list[countIdx+1]
             nN=uniqueR>0
-            stats=as.data.frame(stats[nN], fix.empty.names=FALSE)            
+            stats=as.data.frame(stats[nN], fix.empty.names=FALSE)
+            stats[is.na(stats)]=0    #set variance for contigs with 1 read to 0        
             mu=sum(stats[1,]*uniqueR[nN]/n)
             sd=sqrt(1/(n-1)*(sum(uniqueR[nN]*(mu-stats[1,])^2) + 
-                sum((uniqueR-1)*stats[2,])))
+                sum((uniqueR[nN]-1)*stats[2,])))
             message("Mean fragment length: ", 
                 round(mu,3), " nt", sep="")
             message("SD of fragment length: ", 
