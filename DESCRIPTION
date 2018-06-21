@@ -1,8 +1,8 @@
 Package: qsea
 Type: Package
 Title: IP-seq data analysis and vizualization
-Version: 1.7.2
-Date: 2018-06-12
+Version: 1.7.3
+Date: 2018-06-21
 Author: Matthias Lienhard, Lukas Chavez, Ralf Herwig
 Maintainer: Matthias Lienhard <lienhard@molgen.mpg.de>
 Description: qsea (quantitative sequencing enrichment analysis) was developed 
@@ -22,7 +22,7 @@ Imports: Biostrings, graphics, gtools, methods, stats, utils, HMMcopy,
         limma, GenomeInfoDb, BiocGenerics, grDevices, zoo, BiocParallel
 VignetteBuilder: knitr
 Suggests: BSgenome.Hsapiens.UCSC.hg19, MEDIPSData, testthat,
-        BiocStyle, knitr, rmarkdown
+        BiocStyle, knitr, rmarkdown, BiocManager
 ByteCompile: no
 Packaged: 2018-06-12 12:12:12 UTC; lienhard
 NeedsCompilation: yes

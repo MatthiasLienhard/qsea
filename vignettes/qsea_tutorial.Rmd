@@ -41,9 +41,7 @@ of the experiments into account.
 To install the QSEA package in your R environment, start R and enter:
 
 ```{r , eval=FALSE}
-source("https://bioconductor.org/biocLite.R")
-biocLite("qsea")
-
+BiocManager::install("qsea")
 ```
 
 <a name="hg19install"></a>
@@ -53,7 +51,7 @@ As soon as you have the `r Biocpkg("BSgenome")` package installed and the
 library loaded using 
 
 ```{r , eval=FALSE}
-biocLite("BSgenome")
+BiocManager::install("BSgenome")
 library("BSgenome")
 ```
 you can list all available genomes by typing
@@ -70,7 +68,7 @@ In the given example, we mapped the short
 reads against the human genome build hg19. 
 Therefore, we download and install this genome build:
 ```{r, eval=FALSE}
-biocLite("BSgenome.Hsapiens.UCSC.hg19")
+BiocManager::install("BSgenome.Hsapiens.UCSC.hg19")
 ```
 This takes some time, but has to be done only once for each reference genome.
 
@@ -78,12 +76,12 @@ In order to specify genomic regions of interest,
 QSEA utilitzes the GenomicRanges package
 
 ```{r, eval=FALSE}
-biocLite("GenomicRanges")
+BiocManager::install("GenomicRanges")
 ```
 Finally, the QSEA work flow described below requires access to example data 
 available in the `r Biocpkg("MEDIPSData")` package which can be installed by typing:
 ```{r, eval=FALSE}
-biocLite("MEDIPSData")
+BiocManager::install("MEDIPSData")
 ```
 # QSEA workflow
 Here, we show the most important steps of the QSEA work-flow for the analysis of
