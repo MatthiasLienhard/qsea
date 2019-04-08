@@ -119,7 +119,7 @@ getCoverage<-function(file_name=NULL,Regions=NULL, fragment_length=NULL,
                 fragment=fragment))
         }
         #BPPARAM_in= bpstart(BPPARAM_in)
-        #workers=bpworkers(BPPARAM_in)
+        #workers=BiocParallel::bpnworkers(BPPARAM_in)
         #if(workers>1)
         #    message("using ",workers, " cores")
         #count_list=unlist(

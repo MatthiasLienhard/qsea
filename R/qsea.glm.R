@@ -213,7 +213,7 @@ fitNBglmMatrix=function(x,y,disp, nf,linkf="log", maxit=60, coef=NULL,
     if(n<1e5) 
         BPPARAM=SerialParam()
     if(is.null(nChunks))
-        nChunks=bpworkers(BPPARAM)
+        nChunks=BiocParallel::bpnworkers(BPPARAM)
     #todo=seq_len(n)
     if(nChunks>1){
         message("Fitting GLMs in ",nChunks , " chunks")

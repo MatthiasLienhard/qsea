@@ -141,7 +141,7 @@ addNewSamples<-function(qs, sampleTable, force=FALSE, parallel=FALSE){
     # get the coverage
     if(parallel) {  
         BPPARAM=bpparam()
-        message("Scanning ",bpworkers(BPPARAM) , " files in parallel")
+        message("Scanning ",BiocParallel::bpnworkers(BPPARAM) , " files in parallel")
     }else
         BPPARAM=SerialParam()
     
@@ -261,7 +261,7 @@ addCoverage<-function(qs, fragment_length, uniquePos=TRUE, minMapQual=1,
     # get the coverage
     if(parallel) {  
         BPPARAM=bpparam()
-        message("Scanning ",bpworkers(BPPARAM) , " files in parallel")
+        message("Scanning ",BiocParallel::bpnworkers(BPPARAM) , " files in parallel")
     }else
         BPPARAM=SerialParam()
     

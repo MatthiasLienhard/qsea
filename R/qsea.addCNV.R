@@ -57,7 +57,7 @@ findCNV<-function(sampleTable=NULL,BSgenome,chr.select=NULL,
     
     if(parallel) {  
         BPPARAM=bpparam()
-        message("Scanning ",bpworkers(BPPARAM) , " files in parallel")
+        message("Scanning ",bpnworkers(BPPARAM) , " files in parallel")
     }else
         BPPARAM=SerialParam()
     
