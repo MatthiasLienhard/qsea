@@ -3,8 +3,11 @@ makeTable<-function(qs,glm,norm_methods="counts",samples,groupMeans, keep, ROIs,
     chunksize=1e5){
      if(missing(qs) || class(qs) != "qseaSet" )
         stop("please specify a qseaSet\n")    
-    if(missing(samples))
+    if(missing(samples)){
+        if(CNV)
+            warning("CNV is TRUE but samples is not set")
         samples=NULL
+    }
     samples=checkSamples(qs, samples)
     if(missing(groupMeans))
         groupMeans=NULL
@@ -126,7 +129,7 @@ makeTable<-function(qs,glm,norm_methods="counts",samples,groupMeans, keep, ROIs,
     else
         count_tab=as.data.frame(matrix(NA,n,0))
     cnv_tab=as.data.frame(matrix(NA,n,0))
-    if(CNV && ! missing(samples)){
+    if(CNV && ! is.null(samples)){
         cnv_tab=matrix(NA,n,length(samples), dimnames=
             list(NULL,sub("CNV","CNVlogFC",names(mcols(getCNV(qs)))[samples])))
         message("adding CNV logFC values")
