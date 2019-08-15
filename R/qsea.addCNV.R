@@ -111,11 +111,14 @@ findCNV<-function(sampleTable=NULL,BSgenome,chr.select=NULL,
     for (i in seq_len(n)){
         message("== searching for CNVs in ",sampleTable$sample_name[i]," ==")
 
-        CNV=as(CNV_Regions, "RangedData")        
+        #CNV=as(CNV_Regions, "RangedData")  
+        CNV=as(CNV_Regions, "data.frame")       
+        names(CNV)[1]='chr'
         CNV$valid=filter & values[,i]>0 & medianValue>0
         CNV$copy=log2(values[,i]/medianValue)
         CNV$copy[!is.finite(CNV$copy)|is.na(CNV$copy)]=0
-        as=rep(TRUE,length(space(CNV)))
+        #as=rep(TRUE,length(space(CNV)))
+        as=rep(TRUE,nrow(CNV))
         param=HMMcopy::HMMsegment(CNV, getparam=TRUE, autosomes=as)
         if(!is.null(mu)) param$m=mu
         CNV_seg=HMMcopy::HMMsegment(CNV, param,verbose=FALSE, autosomes=as)    
