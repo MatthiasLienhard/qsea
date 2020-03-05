@@ -13,7 +13,7 @@ getNormalizedValues<-function(qs, methods, windows=NULL, samples=NULL,
     }else if(is.numeric(samples))
         samples=getSampleNames(qs, samples)
     if(!is.null(groupMeans)){
-        if(class(groupMeans) != "list")
+        if(! is(groupMeans, "list"))
             stop("groupMeans must be a list")
         for(i in seq_along(groupMeans) ){
             if(is.numeric(groupMeans[[i]]))
@@ -190,7 +190,7 @@ getNumPar<-function(string, methods){
 
 getNormMatrix<-function(qs, methods,windows,samples){
 
-    if(class(methods) == "normMethod") {
+    if(is(methods, "normMethod")) {
         methods=methods[[1]]
         warning("selected first normMethod") #this should not happen
     }
@@ -357,14 +357,14 @@ estimateEnrichmentLM<-function(qs,windowIdx, signal, min_wd=5,
     if(missing (signal)){
             stop("plese provide a calibration signal or trimQuantile")
     }
-    if (class(signal)=="numeric") {
+    if (is(signal, "numeric")) {
         if(length(signal)==1)
             type="allSame"
         else if(length(signal)!=m)
             stop("number of windows (",m, ") does not match number of values (",
                 length(signal),") in \"signal\"")
         else type="onePerWd"
-    }else if (class(signal)=="matrix") {
+    }else if (is(signal,"matrix") ){
         if(n != ncol(signal) )
             stop("number of samples (",n,") does not match number of columns (",
                 ncol(signal),") in \"signal\"")
@@ -416,7 +416,7 @@ fitEnrichmentProfile<-function(factors, density, n, minN=1,...){
     #weight w ~ 1/SEM
     #SEM= sd/sqrt(n)
     #assuming sd is independent of pattern density pd --> w=sqrt(n)
-    if(class(factors)=="numeric")
+    if(is(factors, "numeric"))
         factors=matrix(factors)
     sigmPar=matrix(NA,ncol(factors),3, 
         dimnames=list(colnames(factors), c("a", "b", "c")))

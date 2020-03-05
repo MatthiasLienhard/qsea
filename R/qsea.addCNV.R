@@ -155,7 +155,7 @@ addCNV<-function(qs,file_name, window_size=1000000, paired=FALSE,
         fragment_length=NULL,cnv=NULL, mu =log2(c(1/2, 2/3, 1, 3/2,2,3)), 
         normal_idx=NULL, plot_dir=NULL, MeDIP=FALSE, parallel=FALSE){    
     if(! missing(cnv) ){
-        if(class(cnv)!="GRanges")
+        if(! is(cnv, "GRanges"))
             stop("please provide CNVs as GRange object")
         return(setCNV(qs,cnv))
     }#else find CNVs:

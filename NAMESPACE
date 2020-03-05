@@ -73,9 +73,9 @@ importFrom(BSgenome, bsapply,getBSgenome)
 importFrom(graphics, abline, legend, lines, plot)
 importFrom(gtools, mixedsort)
 importFrom("utils", "head")
-importFrom("methods", "new")
+importFrom("methods", new, is)
 importFrom(BiocParallel,bplapply,bpmapply,SerialParam,bpparam,bpworkers,
-    bpstart,bpstop )
+    bpnworkers,bpstart,bpstop )
 importFrom(IRanges, cor, end, quantile, ranges, "ranges<-", resize, 
     restrict, start, values, var, width,unique, which, IRanges,space,
     as.matrix, as.data.frame, Views, viewSums, nir_list, collapse)

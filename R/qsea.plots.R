@@ -14,7 +14,7 @@ getPCA<-function(qs, chr=getChrNames(qs),ROIs, minRowSum=20, keep,norm_method=
         keep=which(rowSums(getCounts(qs)) >= minRowSum )
     else
         keep=intersect(keep, which(rowSums(getCounts(qs)) >= minRowSum ))
-    if(class(norm_method)=="character"){
+    if(is(norm_method,"character")){
         norm_method=normMethod(norm_method)
     }
     if(! all( getChrNames(qs) %in% chr ))
@@ -138,7 +138,7 @@ plotCNV<-function(qs, dist=c("euclid", "cor")[1], clust_method="complete",
     chr= getChrNames(qs), samples=getSampleNames(qs),cex=1, 
     labels=c(TRUE,TRUE, TRUE, TRUE), naColor="darkgrey" , indicateLogFC=TRUE){
 
-    if(missing(qs) | class(qs) != "qseaSet" )
+    if(missing(qs) | !is(qs, "qseaSet" ))
         stop("No qseaSet specified!")
     if(length(getCNV(qs))==0)
         stop("qs does not contain CNV information. Run \"addCNV\" first")
@@ -240,39 +240,39 @@ plotCoverage<-function(qs,test_results, chr, start, end, samples,samples2,
     samples=checkSamples(qs,samples)
    
     if(! missing(regions)){
-        if(class(regions)!="list"){
+        if(! is(regions,"list")){
             regions=list(ROIs=regions)
         }
-        if(! all(sapply(regions, class)=="GRanges")){
+        if(! all(sapply(regions, is, "GRanges"))){
             stop("\"regions\" should be a \"GenomicRanges\" object")
         }
         if(missing(regions_lwd)) 
             regions_lwd=list()
-        if(class(regions_lwd) != "list"){
+        if(! is(regions_lwd, "list")){
             regions_lwd=rep(list(regions_lwd), length(regions))
             names(regions_lwd)=names(regions)
         }
         if(missing(regions_col) )
             regions_col="black"
-        if (class(regions_col) != "list"){
+        if (!is(regions_col, "list")){
             regions_col=rep(list(regions_col), length(regions))
             names(regions_col)=names(regions)
         }
         if(missing(regions_dash) )
             regions_dash=list()
-        if (class(regions_dash) != "list"){
+        if (!is(regions_dash, "list")){
             regions_dash=rep(list(regions_dash), length(regions))
             names(regions_dash)=names(regions)
         }
         if( missing(regions_offset))
             regions_offset=list()        
-        if (class(regions_offset) != "list"){
+        if (!is(regions_offset, "list")){
             regions_offset=rep(list(regions_offset), length(regions))
             names(regions_offset)=names(regions)
         }
         if( missing(regions_names))
             regions_names=lapply(regions, function(x) names(mcols(x)))
-        if (class(regions_names) != "list"){
+        if (!is(regions_names,"list")){
             regions_names=rep(list(regions_names), length(regions))
             names(regions_names)=names(regions)
         }

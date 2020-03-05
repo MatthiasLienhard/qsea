@@ -6,7 +6,7 @@ createQseaSet=function(sampleTable,BSgenome,chr.select,Regions,window_size=250)
     rownames(sampleTable)=sampleTable$sample_name
     checkSampleTab(sampleTable)
     #must have: regions or bsgenome
-    if( missing(BSgenome) && (missing(Regions) || class(Regions)!="GRanges" ) )
+    if( missing(BSgenome) && (missing(Regions) || ! is(Regions,"GRanges" ) ))
         stop("Must specify a BSgenome library or a GRanges \"Regions\" object.")
     message("==== Creating qsea set ====")
     # sort chromosomes
@@ -177,7 +177,7 @@ addNewSamples<-function(qs, sampleTable, force=FALSE, parallel=FALSE){
 addSeqPref<-function(qs, seqPref,file_name, fragment_length, paired=FALSE, 
         uniquePos=TRUE, alpha=0.05, pseudocount=5, cut=3){
     if(! missing(seqPref) ){
-        if(class(seqPref)!="numeric")
+        if(! is(seqPref,"numeric"))
             stop("Please provide sequence preference as log2FC")
         if(length(seqPref) != length(getRegions(qs)))
             stop("length of provided sequence preference",
@@ -397,7 +397,7 @@ subdivideRegions<-function(Regions, chr.select,window_size, BSgenome){
     #resize (enlarge) to a multiple of window_size
     pos=apply(FUN=function(x) seq(from=x[1], to=x[2], by=window_size), 
         X=as.data.frame(ranges),MARGIN=1)
-    if(class(pos)=="matrix"){
+    if(is(pos,"matrix")){
         n=nrow(pos)
         pos=as.vector(pos)
         chr=rep(as.character(seqnames(Regions)), each=n)

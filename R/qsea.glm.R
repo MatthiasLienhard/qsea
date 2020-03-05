@@ -10,14 +10,14 @@ fitNBglm=function(qs,design,link="log",keep, disp_method="region_wise",
     sampleIdx=row.names(design)
     sampleIdx=checkSamples(qs,sampleIdx)
     fitDisp=disp_method!="initial"
-    if(class(norm_method)=="character")
+    if(is(norm_method,"character"))
         norm_method=normMethod(norm_method)
-    if(class(norm_method)=="normMethods" & length(norm_method)==1)
+    if(is(norm_method,"normMethods") & length(norm_method)==1)
         norm_method=norm_method[[1]]
     else stop("please provide one valid norm_method")
-    if(class(design) !="matrix") #todo: some more checks: nrow, full rank...!!!
+    if( ! is(design,"matrix")) #todo: some more checks: nrow, full rank...!!!
         stop("please provide valid design matrix")
-    if(missing(qs) || class(qs) != "qseaSet")
+    if(missing(qs) || ! is(qs, "qseaSet"))
         stop("please provide a qseaSet")
     if(link !="log")
         stop("currently, \"link\" must be \"log\"")
@@ -122,7 +122,7 @@ addContrast=function(qs,glm,contrast,coef,name,verbose=TRUE,
     if( missing(contrast) == missing(coef) )
         stop("either contrast or coeficient must be set")
     if(!missing(contrast)){ 
-        if(class(contrast)=="vector")
+        if(is(contrast,"vector"))
             contrast=as.matrix(contrast)
         if(dim(contrast)[2]>1)
             stop("currently, only one contrast is supported")
@@ -133,7 +133,7 @@ addContrast=function(qs,glm,contrast,coef,name,verbose=TRUE,
         design=getDesignMatrix(glm)
         effect=getFullModel(glm)$coefficients[, coef]
     }
-    if(class(coef)=="character")
+    if(is(coef,"character"))
         coef=match(coef, getCoefNames(glm))
     if(any(is.na(coef)))
         stop("contrast not found in design")
