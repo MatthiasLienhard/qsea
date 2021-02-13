@@ -1,7 +1,7 @@
 
 makeGenomeWindows<-function(BSgenome, chr.select, window_size=250){
     if(missing(BSgenome)){stop("Please specify genome")}
-    dataset=get(ls(paste("package:", BSgenome, sep="")))
+    dataset=getBSgenome(BSgenome)
     chr_length=seqlengths(dataset)
     if(! missing(chr.select) ) {
         if(length(intersect(names(chr_length),chr.select))==0) 

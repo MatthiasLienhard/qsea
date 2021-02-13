@@ -387,6 +387,7 @@ addEnrichmentParameters<-function(qs, enrichmentPattern, signal,
 subdivideRegions<-function(Regions, chr.select,window_size, BSgenome){
     if(missing(chr.select))
         chr.select=mixedsort(seqlevels(Regions))
+    
     Regions=Regions[as.vector(seqnames(Regions)) %in% chr.select]
     #order according to chr.select
     seqlevels(Regions)=chr.select
@@ -407,8 +408,9 @@ subdivideRegions<-function(Regions, chr.select,window_size, BSgenome){
         chr=rep(as.character(seqnames(Regions)), times=n)
     }
     if(!missing(BSgenome)){
-        chr_length=seqlengths(get(ls(paste("package:", BSgenome, sep=""))))
-        seqinfo = Seqinfo(names(chr_length),chr_length, NA, BSgenome)
+        dataset=getBSgenome(BSgenome)
+        chr_length=seqlengths(dataset)
+        seqinfo = Seqinfo(names(chr_length),chr_length, NA, metadata(dataset)$genome)
     }else{
         seqinfo=seqinfo(Regions)
     }
