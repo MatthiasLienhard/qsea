@@ -55,7 +55,7 @@ importMethodsFrom(BiocGenerics, plotPCA)
 importMethodsFrom(Biostrings, matchPattern, reverseComplement, vcountPattern)
 importMethodsFrom(BSgenome, getSeq,masknames)
 importMethodsFrom(IRanges, cor, start,end, quantile, ranges, "ranges<-", 
-    resize, restrict, values, var, width,unique,as.vector, which, overlapsAny, 
+    resize, restrict, var, width,unique,as.vector, which, overlapsAny, 
     as.matrix, as.data.frame, '[', Views, viewSums, nir_list, collapse,
     "active<-", active)
 importMethodsFrom(methods, show)
@@ -77,7 +77,7 @@ importFrom("methods", new, is)
 importFrom(BiocParallel,bplapply,bpmapply,SerialParam,bpparam,bpworkers,
     bpnworkers,bpstart,bpstop )
 importFrom(IRanges, cor, end, quantile, ranges, "ranges<-", resize, 
-    restrict, start, values, var, width,unique, which, IRanges,space,
+    restrict, start, var, width,unique, which, IRanges,space,
     as.matrix, as.data.frame, Views, viewSums, nir_list, collapse)
 importFrom(stats, lm, t.test, wilcox.test, qnbinom)
 importFrom(utils, read.table, setTxtProgressBar, txtProgressBar,write.table)
