@@ -429,10 +429,20 @@ fitEnrichmentProfile<-function(factors, density, n, minN=1,...){
     for(j in seq_len(ncol(factors))){
         CF_used=which(!is.na(factors[,j]) &is.finite(factors[,j]) & n>=minN)
         #for(i=5:length(CF_used))
-        sigmPar[j,]=optim(par=c(1, upperQ[j],10), fn=RSSfun,
-            factor=factors[CF_used,j],pd=density[CF_used],w=sqrt(n[CF_used]),
-            lower=c(-1, upperQ[j]/2,1), upper=c(3, upperQ[j]*2,20),
-            method="L-BFGS-B")$par
+        sigmParTemp=optim(par=c(1, upperQ[j],10), fn=RSSfun,
+                          factor=factors[CF_used,j],pd=density[CF_used],w=sqrt(n[CF_used]),
+                          lower=c(-1, upperQ[j]/2,1), upper=c(3, upperQ[j]*2,20),
+                          method="L-BFGS-B")$par
+
+        #check if the upper limit for a (3) is hit. If so, rerun optimisation with a higher upper bound for a.
+        if(sigmParTemp[1] == 3){
+            sigmParTemp=optim(par=c(1, upperQ[j],10), fn=RSSfun,
+                              factor=factors[CF_used,j],pd=density[CF_used],w=sqrt(n[CF_used]),
+                              lower=c(-1, upperQ[j]/2,1), upper=c(10, upperQ[j]*2,20),
+                              method="L-BFGS-B")$par
+        }
+
+        sigmPar[j,] <- sigmParTemp
     }
     return(sigmPar)
 }
