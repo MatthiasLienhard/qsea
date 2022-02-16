@@ -1,3 +1,11 @@
+Changes in version 1.21.2
+- increased upper bound for enrichment model, allowing for a steeper increase in enrichment with CpG density. (Github PR \#9)
+
+
+Changes in version 1.21.1
++ Bugfixes:
+- makeTable with one window (github PR \#8)
+
 Changes in version 1.7.4
 + Reformated NEWS file
 
