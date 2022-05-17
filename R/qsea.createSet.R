@@ -1,6 +1,7 @@
 createQseaSet=function(sampleTable,BSgenome,chr.select,Regions,window_size=250)
 {
     ## Parameter Check
+    sampleTable <- as.data.frame(sampleTable)
     facI=sapply(sampleTable, is.factor)
     sampleTable[,facI] = sapply(sampleTable[,facI, drop=FALSE], as.character)
     rownames(sampleTable)=sampleTable$sample_name
