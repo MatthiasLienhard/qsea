@@ -102,7 +102,7 @@ getNormalizedValues<-function(qs, methods, windows=NULL, samples=NULL,
                 norm[norm<=0]=NA
 
             #for(i in seq_along(allSampleIdx)){
-            big=values>5*norm+offset
+            big=values>(5*norm+offset) | (values > norm+offset+500)
                 #prevents NaN for big y (dgamma gets 0)
             if(is.null(qPer)){
                 values=.estimateMethPois( y=values, c=norm,o=offset)
@@ -115,6 +115,7 @@ getNormalizedValues<-function(qs, methods, windows=NULL, samples=NULL,
                 dimnames(values)=dimN
             }
             values[big]=1
+            values[values>1]=1
             rm(big)
         }else{#scale by normalization factor
             if(any(offset!=0))
