@@ -1,10 +1,12 @@
 Package: qsea
 Type: Package
 Title: IP-seq data analysis and vizualization
-Version: 1.25.0
-Date: 2021-08-26
-Author: Matthias Lienhard, Lukas Chavez, Ralf Herwig
-Maintainer: Matthias Lienhard <lienhard@molgen.mpg.de>
+Version: 1.25.1
+Date: 2023-03-22
+Authors@R: c(
+        person("Matthias", "Lienhard", role=c("aut", "cre"), email="lienhard@molgen.mpg.de", comment = c(ORCID = "0000-0002-2549-3142")),
+        person("Lukas", "Chavez", role="aut", comment = c(ORCID = "0000-0002-8718-8848")),
+        person("Ralf", "Herwig", role="aut", comment = c(ORCID = "0000-0002-9335-1760")))
 Description: qsea (quantitative sequencing enrichment analysis) was developed 
     as the successor of the MEDIPS package for analyzing data derived from 
     methylated DNA immunoprecipitation (MeDIP) experiments followed by 
@@ -12,18 +14,19 @@ Description: qsea (quantitative sequencing enrichment analysis) was developed
     the analysis of other kinds of quantitative sequencing data 
     (e.g. ChIP-seq, MBD-seq, CMS-seq and others) 
     including calculation of differential enrichment between groups of samples.
-License: GPL (>=2)
+License: GPL-2
 biocViews: Sequencing, DNAMethylation, CpGIsland, ChIPSeq,
         Preprocessing, Normalization, QualityControl, Visualization,
         CopyNumberVariation, ChipOnChip, DifferentialMethylation
-Depends: R (>= 3.5)
+Depends: R (>= 4.3)
 Imports: Biostrings, graphics, gtools, methods, stats, utils, HMMcopy,
         rtracklayer, BSgenome, GenomicRanges, Rsamtools, IRanges,
-        limma, GenomeInfoDb, BiocGenerics, grDevices, zoo, BiocParallel
+        limma, GenomeInfoDb, BiocGenerics, grDevices, zoo, BiocParallel,
+        S4Vectors
 VignetteBuilder: knitr
 Suggests: BSgenome.Hsapiens.UCSC.hg19, MEDIPSData, testthat,
         BiocStyle, knitr, rmarkdown, BiocManager, MASS
 ByteCompile: no
-Packaged: 2021-08-26 12:12:12 UTC; lienhard
+Packaged: 2023-03-22 08:12:12 UTC; lienhard
 NeedsCompilation: yes
 

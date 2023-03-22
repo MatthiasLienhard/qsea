@@ -58,6 +58,7 @@ importMethodsFrom(IRanges, cor, start,end, quantile, ranges, "ranges<-",
     resize, restrict, var, width,unique,as.vector, which, overlapsAny, 
     as.matrix, as.data.frame, '[', Views, viewSums, nir_list, collapse,
     "active<-", active)
+importMethodsFrom(S4Vectors, metadata)
 importMethodsFrom(methods, show)
 importMethodsFrom(GenomicRanges, as.data.frame, length, '[',
     reduce, coverage, findOverlaps, countOverlaps, disjointBins)

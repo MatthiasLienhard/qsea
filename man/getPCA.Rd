@@ -10,7 +10,7 @@ for exploratory data analysis.
 getPCA(qs, chr= getChrNames(qs),ROIs, minRowSum=20, keep ,
     norm_method=normMethod(logRPM =
     c("log", "library_size", "cnv", "preference", "psC10")), topVar=1000,
-    samples=getSampleNames(qs))
+    samples=getSampleNames(qs), minEnrichment = 0)
 }
 \arguments{
 \item{qs}{DIPSset (mandatory)}

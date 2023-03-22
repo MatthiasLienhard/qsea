@@ -324,7 +324,7 @@ plotCoverage<-function(qs,test_results, chr, start, end, samples,samples2,
         ret[["clustering"]]=clust
     }else if(reorder=="max"){
         maxrow=which.max(rowSums(roi_val))
-        ord=order(roi_val[maxrow,])
+        ord=order(t(roi_val[maxrow,]))
         ret$ordPos=(roi_tab$window_start[maxrow]+
             roi_tab$window_end[maxrow])/2
     }else if(reorder=="minP"){
@@ -332,12 +332,12 @@ plotCoverage<-function(qs,test_results, chr, start, end, samples,samples2,
             ROIs=GRanges(chr, ranges=IRanges(start, end)))
         ret$regions=test_tab[,-(5:7)]
         minProw=which.min(test_tab[,grep("PValue", colnames(test_tab))])
-        ord=order(roi_val[minProw,])
+        ord=order(t(roi_val[minProw,]))
         ret$ordPos=(roi_tab$window_start[minProw]+
             roi_tab$window_end[minProw])/2
     }else if (is.numeric(reorder)){
         ordRow=sum(roi_tab$window_start<=reorder)
-        ord=order(roi_val[ordRow,])
+        ord=order(t(roi_val[ordRow,]))
         ret$ordPos=(roi_tab$window_start[ordRow]+
             roi_tab$window_end[ordRow])/2
     }else if(reorder != "non"){

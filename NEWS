@@ -1,3 +1,9 @@
+Changes in version 1.25.1
++ Bugfixes:
+- fixed issue with R4.3 ("cannot xtfrm data frames")
+- fixed documentation
+- updated description file
+
 Changes in version 1.21.2
 - increased upper bound for enrichment model, allowing for a steeper increase in enrichment with CpG density. (Github PR \#9)
 
